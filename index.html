@@ -50,7 +50,7 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260721i" />
+    <link rel="stylesheet" href="styles.css?v=20260721k" />
   </head>
   <body>
     <header class="site-header">
@@ -67,7 +67,6 @@
           <a href="#/" data-link data-nav="home">Home</a>
           <a href="#/work" data-link data-nav="work">Work</a>
           <a href="#/cases" data-link data-nav="cases">Cases</a>
-          <a href="#/projects" data-link data-nav="projects">Projects</a>
           <a href="#/stack" data-link data-nav="stack">Stack</a>
           <a href="#/more" data-link data-nav="more">More</a>
           <a href="#/contact" data-link data-nav="contact">Contact</a>
@@ -199,29 +198,46 @@
         <div class="proof">
           <div class="proof__inner">
             <div class="proof__item">
-              <p class="proof__value">2017→</p>
-              <p class="proof__label">Shipping production systems</p>
+              <p class="proof__value">30+</p>
+              <p class="proof__label">Microservices migrated to .NET 10</p>
             </div>
             <div class="proof__item">
-              <p class="proof__value">3</p>
-              <p class="proof__label">Industries: AI, Fashion, Banking</p>
+              <p class="proof__value">~50ms</p>
+              <p class="proof__label">Recommendation response time</p>
             </div>
             <div class="proof__item">
-              <p class="proof__value">Senior</p>
-              <p class="proof__label">Mentoring & technical guidance</p>
+              <p class="proof__value">40+</p>
+              <p class="proof__label">Services across a live ecosystem</p>
             </div>
           </div>
         </div>
 
-        <div class="banner" aria-hidden="true">
-          <img
-            class="banner__image"
-            src="images/hero-bg.png"
-            alt=""
-            width="1200"
-            height="400"
-            decoding="async"
-          />
+        <div class="section home-cases">
+          <p class="section__eyebrow">Case studies</p>
+          <h2 class="section__title">Impact, not just titles</h2>
+          <p class="prose intro">
+            Two deep dives recruiters can skim in under a minute.
+          </p>
+          <div class="card-list">
+            <a class="card" href="#/cases/defined" data-link>
+              <p class="card__eyebrow">Defined.ai · 2024–Present</p>
+              <h3 class="card__title">.NET 10 migration & GDPR-ready platform</h3>
+              <p class="card__text">
+                30+ services migrated to .NET 10, architecture across 40+
+                microservices, and a GDPR solution in a complex Azure ecosystem.
+              </p>
+              <p class="card__cta">Read case study →</p>
+            </a>
+            <a class="card" href="#/cases/farfetch" data-link>
+              <p class="card__eyebrow">Farfetch · 2020–2024</p>
+              <h3 class="card__title">Recommendations at ~50ms</h3>
+              <p class="card__text">
+                Recommendation services at ~50ms with high throughput — polyglot
+                data, Kafka, and close collaboration with Data Science / ML.
+              </p>
+              <p class="card__cta">Read case study →</p>
+            </a>
+          </div>
         </div>
 
         <div class="section about">
@@ -746,8 +762,26 @@
             <div class="more-facts__row more-facts__row--feature">
               <dt>Rock</dt>
               <dd>
-                Favorite band
-                <span class="more-band">Red Hot Chili Peppers</span>
+                <a
+                  class="more-rock"
+                  href="https://open.spotify.com/album/2Y9IRtehByVkegoD7tjWqu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    class="more-rock__art"
+                    src="images/rhcp-californication.jpg"
+                    alt="Californication album cover — Red Hot Chili Peppers"
+                    width="64"
+                    height="64"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <span class="more-rock__text">
+                    Favorite band
+                    <span class="more-band">Red Hot Chili Peppers</span>
+                  </span>
+                </a>
               </dd>
             </div>
           </dl>
@@ -809,6 +843,6 @@
       </svg>
     </button>
 
-    <script src="script.js?v=20260721i"></script>
+    <script src="script.js?v=20260721k"></script>
   </body>
 </html>

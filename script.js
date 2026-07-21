@@ -161,7 +161,6 @@ const roles = [
   "backend specialist",
   "platform engineer",
   "cloud builder",
-  "Futsal player",
 ];
 const typedEl = document.getElementById("typed-role");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
