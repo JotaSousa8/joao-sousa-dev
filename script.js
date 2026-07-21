@@ -5,14 +5,71 @@ if (yearEl) {
 
 const header = document.querySelector(".site-header");
 const backToTop = document.getElementById("back-to-top");
+const pages = document.querySelectorAll("[data-page]");
+const navLinks = document.querySelectorAll("[data-nav]");
+const pageTitles = {
+  home: "João Sousa — Senior Software Engineer",
+  work: "Work — João Sousa",
+  stack: "Stack — João Sousa",
+  contact: "Contact — João Sousa",
+};
+
+const normalizeRoute = (hash) => {
+  const raw = (hash || "").replace(/^#\/?/, "").trim().toLowerCase();
+  if (!raw || raw === "home" || raw === "top") return "home";
+  if (raw === "work" || raw === "stack" || raw === "contact") return raw;
+  return "home";
+};
+
+const showPage = (route) => {
+  pages.forEach((page) => {
+    const match = page.dataset.page === route;
+    page.classList.toggle("is-active", match);
+    page.hidden = !match;
+  });
+
+  navLinks.forEach((link) => {
+    link.classList.toggle("is-active", link.dataset.nav === route);
+  });
+
+  document.title = pageTitles[route] || pageTitles.home;
+  window.scrollTo({ top: 0, behavior: "auto" });
+  onScroll();
+};
+
+const navigate = (route, replace = false) => {
+  const nextHash = route === "home" ? "#/" : `#/${route}`;
+  if (replace) {
+    history.replaceState(null, "", nextHash);
+  } else if (location.hash !== nextHash) {
+    location.hash = nextHash;
+    return;
+  }
+  showPage(route);
+};
+
+const syncFromHash = () => {
+  showPage(normalizeRoute(location.hash));
+};
+
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("[data-link]");
+  if (!link) return;
+  const href = link.getAttribute("href") || "";
+  if (!href.startsWith("#")) return;
+  event.preventDefault();
+  navigate(normalizeRoute(href));
+});
+
+window.addEventListener("hashchange", syncFromHash);
 
 const onScroll = () => {
   const y = window.scrollY;
   if (header) {
-    header.classList.toggle("is-scrolled", y > 12);
+    header.classList.toggle("is-scrolled", y > 8);
   }
   if (backToTop) {
-    const show = y > 420;
+    const show = y > 320;
     backToTop.classList.toggle("is-visible", show);
     backToTop.hidden = !show;
   }
@@ -28,36 +85,18 @@ if (backToTop) {
   });
 }
 
-const revealItems = document.querySelectorAll("[data-reveal]");
-if ("IntersectionObserver" in window) {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.18, rootMargin: "0px 0px -8% 0px" }
-  );
-
-  revealItems.forEach((item) => observer.observe(item));
-} else {
-  revealItems.forEach((item) => item.classList.add("is-visible"));
-}
-
 const root = document.documentElement;
 const themeToggle = document.getElementById("theme-toggle");
 
-const getTheme = () => root.getAttribute("data-theme") === "dark" ? "dark" : "light";
+const getTheme = () =>
+  root.getAttribute("data-theme") === "dark" ? "dark" : "light";
 
 const setTheme = (theme) => {
   root.setAttribute("data-theme", theme);
   localStorage.setItem("theme", theme);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute("content", theme === "dark" ? "#0b141a" : "#0a3d4d");
+    meta.setAttribute("content", theme === "dark" ? "#0a0a0a" : "#ffffff");
   }
   if (themeToggle) {
     themeToggle.setAttribute(
@@ -72,4 +111,55 @@ if (themeToggle) {
     setTheme(getTheme() === "dark" ? "light" : "dark");
   });
   setTheme(getTheme());
+}
+
+const roles = [
+  ".NET engineer",
+  "backend specialist",
+  "platform engineer",
+  "cloud builder",
+];
+const typedEl = document.getElementById("typed-role");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+if (typedEl && !reduceMotion) {
+  let roleIndex = 0;
+  let charIndex = roles[0].length;
+  let deleting = true;
+
+  const tick = () => {
+    const current = roles[roleIndex];
+    if (!deleting && charIndex <= current.length) {
+      typedEl.textContent = current.slice(0, charIndex);
+      charIndex += 1;
+      if (charIndex > current.length) {
+        deleting = true;
+        window.setTimeout(tick, 1600);
+        return;
+      }
+      window.setTimeout(tick, 70);
+      return;
+    }
+
+    if (deleting && charIndex >= 0) {
+      typedEl.textContent = current.slice(0, charIndex);
+      charIndex -= 1;
+      if (charIndex < 0) {
+        deleting = false;
+        roleIndex = (roleIndex + 1) % roles.length;
+        charIndex = 0;
+        window.setTimeout(tick, 280);
+        return;
+      }
+      window.setTimeout(tick, 36);
+    }
+  };
+
+  window.setTimeout(tick, 1400);
+}
+
+if (!location.hash || location.hash === "#") {
+  navigate("home", true);
+} else {
+  syncFromHash();
 }
