@@ -7,18 +7,60 @@ const header = document.querySelector(".site-header");
 const backToTop = document.getElementById("back-to-top");
 const pages = document.querySelectorAll("[data-page]");
 const navLinks = document.querySelectorAll("[data-nav]");
+
 const pageTitles = {
   home: "João Sousa — Senior Software Engineer",
   work: "Work — João Sousa",
+  cases: "Case studies — João Sousa",
+  "case-defined": "Defined.ai case study — João Sousa",
+  "case-farfetch": "Farfetch case study — João Sousa",
+  projects: "Projects — João Sousa",
   stack: "Stack — João Sousa",
+  more: "Beyond work — João Sousa",
   contact: "Contact — João Sousa",
+};
+
+const routeMap = {
+  "": "home",
+  home: "home",
+  top: "home",
+  work: "work",
+  cases: "cases",
+  "cases/defined": "case-defined",
+  "cases/farfetch": "case-farfetch",
+  projects: "projects",
+  stack: "stack",
+  more: "more",
+  contact: "contact",
+};
+
+const hashForRoute = {
+  home: "#/",
+  work: "#/work",
+  cases: "#/cases",
+  "case-defined": "#/cases/defined",
+  "case-farfetch": "#/cases/farfetch",
+  projects: "#/projects",
+  stack: "#/stack",
+  more: "#/more",
+  contact: "#/contact",
+};
+
+const navForRoute = {
+  home: "home",
+  work: "work",
+  cases: "cases",
+  "case-defined": "cases",
+  "case-farfetch": "cases",
+  projects: "projects",
+  stack: "stack",
+  more: "more",
+  contact: "contact",
 };
 
 const normalizeRoute = (hash) => {
   const raw = (hash || "").replace(/^#\/?/, "").trim().toLowerCase();
-  if (!raw || raw === "home" || raw === "top") return "home";
-  if (raw === "work" || raw === "stack" || raw === "contact") return raw;
-  return "home";
+  return routeMap[raw] || "home";
 };
 
 const showPage = (route) => {
@@ -28,8 +70,9 @@ const showPage = (route) => {
     page.hidden = !match;
   });
 
+  const activeNav = navForRoute[route] || "home";
   navLinks.forEach((link) => {
-    link.classList.toggle("is-active", link.dataset.nav === route);
+    link.classList.toggle("is-active", link.dataset.nav === activeNav);
   });
 
   document.title = pageTitles[route] || pageTitles.home;
@@ -38,7 +81,7 @@ const showPage = (route) => {
 };
 
 const navigate = (route, replace = false) => {
-  const nextHash = route === "home" ? "#/" : `#/${route}`;
+  const nextHash = hashForRoute[route] || "#/";
   if (replace) {
     history.replaceState(null, "", nextHash);
   } else if (location.hash !== nextHash) {
@@ -118,6 +161,7 @@ const roles = [
   "backend specialist",
   "platform engineer",
   "cloud builder",
+  "Futsal player",
 ];
 const typedEl = document.getElementById("typed-role");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -6,9 +6,31 @@
     <title>João Sousa — Senior Software Engineer</title>
     <meta
       name="description"
-      content="João Sousa is a Senior .NET Software Engineer based in Porto, building backends, APIs, and cloud platforms across banking, fashion, and AI since 2017."
+      content="Senior .NET engineer in Porto focused on cloud-native backends, APIs, and data platforms across AI, fashion, and banking."
     />
     <meta name="theme-color" content="#ffffff" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="João Sousa — Senior Software Engineer" />
+    <meta
+      property="og:description"
+      content="Senior .NET engineer building backends, APIs, and cloud platforms. Experience across AI, fashion, and banking."
+    />
+    <meta
+      property="og:image"
+      content="https://jotasousa8.github.io/joao-sousa-me/images/hero-bg.png"
+    />
+    <meta property="og:url" content="https://jotasousa8.github.io/joao-sousa-me/" />
+    <meta property="og:locale" content="en_GB" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="João Sousa — Senior Software Engineer" />
+    <meta
+      name="twitter:description"
+      content="Senior .NET engineer building backends, APIs, and cloud platforms."
+    />
+    <meta
+      name="twitter:image"
+      content="https://jotasousa8.github.io/joao-sousa-me/images/hero-bg.png"
+    />
     <script>
       (() => {
         const stored = localStorage.getItem("theme");
@@ -28,7 +50,7 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260721b" />
+    <link rel="stylesheet" href="styles.css?v=20260721i" />
   </head>
   <body>
     <header class="site-header">
@@ -44,7 +66,10 @@
         <nav class="nav" aria-label="Primary">
           <a href="#/" data-link data-nav="home">Home</a>
           <a href="#/work" data-link data-nav="work">Work</a>
+          <a href="#/cases" data-link data-nav="cases">Cases</a>
+          <a href="#/projects" data-link data-nav="projects">Projects</a>
           <a href="#/stack" data-link data-nav="stack">Stack</a>
+          <a href="#/more" data-link data-nav="more">More</a>
           <a href="#/contact" data-link data-nav="contact">Contact</a>
         </nav>
         <div class="header__actions">
@@ -104,18 +129,22 @@
               ><span class="hero__cursor" aria-hidden="true">|</span></span
             >
           </h1>
+          <p class="hero__pitch">
+            Senior .NET engineer focused on
+            <strong>cloud-native backends</strong>, <strong>APIs</strong>, and
+            <strong>data platforms</strong>.
+          </p>
           <p class="hero__lede">
-            I build <strong>backends</strong>, <strong>APIs</strong>, and
-            <strong>cloud platforms</strong> for products that need to scale —
-            from banking systems to fashion recommendations and AI infrastructure.
+            I design and deliver systems that need to scale — from banking
+            back-offices to fashion recommendations and AI infrastructure —
+            across architecture, delivery, integration, and support.
           </p>
           <p class="hero__lede">
             Based in <strong>Porto</strong>, with nearly a decade of experience
-            across the full software lifecycle: architecture, delivery,
-            integration, and support.
+            in multicultural, distributed teams.
           </p>
           <div class="hero__actions">
-            <a class="btn btn--primary" href="#/work" data-link>See my Work</a>
+            <a class="btn btn--primary" href="#/cases" data-link>See case studies</a>
             <a class="btn btn--ghost" href="mailto:jpsousa1812@hotmail.com"
               >Email me</a
             >
@@ -130,6 +159,58 @@
             >
             or email.
           </p>
+
+          <div class="code-panel" aria-label="Profile represented as C# code">
+            <div class="code-panel__bar">
+              <span class="code-panel__dot" aria-hidden="true"></span>
+              <span class="code-panel__dot" aria-hidden="true"></span>
+              <span class="code-panel__dot" aria-hidden="true"></span>
+              <span class="code-panel__file">JoaoSousa.cs</span>
+            </div>
+            <pre class="code-panel__pre"><code class="code"><span class="k">public class</span> <span class="t">JoaoSousa</span> : <span class="t">SoftwareEngineer</span>
+{
+    <span class="k">public string</span> <span class="p">Name</span> { <span class="k">get</span>; } = <span class="s">"João Sousa"</span>;
+    <span class="k">public string</span> <span class="p">Role</span> { <span class="k">get</span>; } = <span class="s">"Senior Software Engineer"</span>;
+    <span class="k">public string</span> <span class="p">Location</span> { <span class="k">get</span>; } = <span class="s">"Porto, Portugal"</span>;
+    <span class="k">public string</span> <span class="p">Focus</span> { <span class="k">get</span>; } = <span class="s">"Cloud-native backends &amp; APIs"</span>;
+
+    <span class="k">public string</span>[] <span class="p">Stack</span> { <span class="k">get</span>; } =
+    [
+        <span class="s">".NET"</span>, <span class="s">"WebAPI"</span>, <span class="s">"Azure"</span>,
+        <span class="s">"SQL"</span>, <span class="s">"MongoDB"</span>, <span class="s">"Cassandra"</span>,
+        <span class="s">"Redis"</span>, <span class="s">"Kafka"</span>, <span class="s">"RabbitMQ"</span>,
+        <span class="s">"Docker"</span>, <span class="s">"Kubernetes"</span>, <span class="s">"Jenkins"</span>
+    ];
+
+    <span class="k">public string</span>[] <span class="p">Industries</span> { <span class="k">get</span>; } =
+    [
+        <span class="s">"AI"</span>, <span class="s">"Fashion"</span>, <span class="s">"Banking"</span>
+    ];
+
+    <span class="k">public bool</span> <span class="p">PlaysFutsal</span> { <span class="k">get</span>; } = <span class="n">true</span>;
+    <span class="k">public int</span> <span class="p">YearsShipping</span> { <span class="k">get</span>; } = <span class="n">DateTime.UtcNow.Year</span> - <span class="n">2017</span>;
+
+    <span class="k">public void</span> <span class="m">Build</span>() =>
+        Deliver(<span class="s">"scalable systems"</span>);
+}</code></pre>
+          </div>
+        </div>
+
+        <div class="proof">
+          <div class="proof__inner">
+            <div class="proof__item">
+              <p class="proof__value">2017→</p>
+              <p class="proof__label">Shipping production systems</p>
+            </div>
+            <div class="proof__item">
+              <p class="proof__value">3</p>
+              <p class="proof__label">Industries: AI, Fashion, Banking</p>
+            </div>
+            <div class="proof__item">
+              <p class="proof__value">Senior</p>
+              <p class="proof__label">Mentoring & technical guidance</p>
+            </div>
+          </div>
         </div>
 
         <div class="banner" aria-hidden="true">
@@ -145,45 +226,50 @@
 
         <div class="section about">
           <p class="section__eyebrow">About</p>
-          <h2 class="section__title">A .NET path since 2017</h2>
-          <div class="prose">
-            <p>
-              I started as a trainee .NET developer at <strong>Natixis</strong>
-              and grew into full-stack delivery on enterprise banking systems —
-              ASP.NET, Angular, SQL Server, and clean architecture in a regulated
-              environment.
-            </p>
-            <p>
-              At <strong>Farfetch</strong> I focused on high-throughput .NET
-              services for recommendations: WebAPIs, polyglot data (SQL, MongoDB,
-              Cassandra, Redis), and messaging with Kafka, Docker, and Kubernetes —
-              working closely with Data Science and ML teams.
-            </p>
-            <p>
-              Today at <strong>Defined.ai</strong> I’m a Senior Software Engineer
-              on cloud-native microservices — Azure, containers, RabbitMQ,
-              GDPR-ready platforms — mentoring others and aligning technical
-              roadmaps with business outcomes.
-            </p>
+          <div class="about-layout">
+            <div class="about-copy">
+              <h2 class="section__title">Building things that people rely on</h2>
+              <div class="prose">
+                <p>
+                  I’ve been writing software since <strong>2017</strong> — starting
+                  at <strong>Natixis</strong>, where I learned what it means to ship
+                  carefully in banking: clear code, solid data, and systems that
+                  hold up when the stakes are real.
+                </p>
+                <p>
+                  At <strong>Farfetch</strong> I moved into large-scale backends for
+                  recommendations, working side by side with Data Science and ML.
+                  That taught me how to keep services fast and dependable while the
+                  product — and the models behind it — kept evolving.
+                </p>
+                <p>
+                  Today, as a Senior Software Engineer at <strong>Defined.ai</strong>,
+                  I help shape cloud platforms on Azure: microservices, data privacy,
+                  and the day-to-day craft of making complex systems simpler for the
+                  people who build and run them. I also mentor juniors — because good
+                  engineering is a team sport.
+                </p>
+                <p>
+                  Outside work: futsal, the gym, and a lot of rock —
+                  <a href="#/more" data-link>more about that</a>.
+                </p>
+              </div>
+              <div class="cta-row">
+                <a class="btn btn--primary" href="#/work" data-link>Full experience</a>
+                <a class="btn btn--ghost" href="#/cases" data-link>Case studies</a>
+              </div>
+            </div>
+            <figure class="about-photo">
+              <img
+                src="images/joao-thailand.png"
+                alt="João Sousa"
+                width="480"
+                height="600"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
           </div>
-          <ul class="facts">
-            <li>
-              <span class="facts__label">Based in</span>
-              <span class="facts__value">Porto, Portugal</span>
-            </li>
-            <li>
-              <span class="facts__label">Experience</span>
-              <span class="facts__value">Since 2017</span>
-            </li>
-            <li>
-              <span class="facts__label">Industries</span>
-              <span class="facts__value">AI · Fashion · Banking</span>
-            </li>
-            <li>
-              <span class="facts__label">Languages</span>
-              <span class="facts__value">PT native · EN professional</span>
-            </li>
-          </ul>
         </div>
       </section>
 
@@ -191,6 +277,10 @@
         <div class="section">
           <p class="section__eyebrow">Experience</p>
           <h1 class="section__title section__title--page">Where the work happened</h1>
+          <p class="prose intro">
+            Impact-focused highlights. For deeper narratives, see the
+            <a href="#/cases" data-link>case studies</a>.
+          </p>
 
           <ol class="timeline">
             <li class="timeline__item is-visible">
@@ -200,14 +290,33 @@
                 <p class="timeline__org">Defined.ai</p>
               </div>
               <div class="timeline__body">
-                <p>
-                  Infrastructure evolution in a microservices landscape — Azure
-                  Classic to ARM, GDPR-ready data governance, and resilient async
-                  systems with RabbitMQ, Docker, and Kubernetes.
-                </p>
+                <ul class="impact">
+                  <li>
+                    Migrated <strong>30+ microservices</strong> to
+                    <strong>.NET 10</strong> from legacy versions in a live
+                    platform.
+                  </li>
+                  <li>
+                    Designed architecture across a complex ecosystem of
+                    <strong>40+ microservices</strong>, including a
+                    <strong>GDPR</strong> solution for sensitive data.
+                  </li>
+                  <li>
+                    Led migration from <strong>Azure Classic to ARM</strong> and
+                    hardened cloud-native delivery with Docker, Kubernetes, and
+                    RabbitMQ.
+                  </li>
+                  <li>
+                    Mentored junior engineers and partnered with stakeholders on
+                    technical roadmaps.
+                  </li>
+                </ul>
                 <p class="timeline__stack">
                   .NET · WebAPI · SQL Server · Docker · RabbitMQ · Azure ·
                   Kubernetes
+                </p>
+                <p class="timeline__link">
+                  <a href="#/cases/defined" data-link>Case study →</a>
                 </p>
               </div>
             </li>
@@ -219,13 +328,31 @@
                 <p class="timeline__org">Farfetch</p>
               </div>
               <div class="timeline__body">
-                <p>
-                  High-throughput recommendation systems alongside Data Science and
-                  ML. Polyglot persistence across MongoDB, SQL, Cassandra, and
-                  Redis, orchestrated with Kafka and Kubernetes.
-                </p>
+                <ul class="impact">
+                  <li>
+                    Delivered recommendation services with
+                    <strong>~50ms response times</strong> under high throughput.
+                  </li>
+                  <li>
+                    Partnered with <strong>Data Science & ML</strong> to align
+                    architecture with model deployment needs.
+                  </li>
+                  <li>
+                    Owned a polyglot persistence layer —
+                    <strong>MongoDB, SQL, Cassandra, Redis</strong> — for
+                    consistency and performance.
+                  </li>
+                  <li>
+                    Orchestrated distributed services with
+                    <strong>Kafka, Docker, and Kubernetes</strong>; integrated
+                    Python into production workflows.
+                  </li>
+                </ul>
                 <p class="timeline__stack">
                   .NET · Kafka · MongoDB · Cassandra · Redis · Kubernetes · Python
+                </p>
+                <p class="timeline__link">
+                  <a href="#/cases/farfetch" data-link>Case study →</a>
                 </p>
               </div>
             </li>
@@ -237,11 +364,21 @@
                 <p class="timeline__org">Natixis</p>
               </div>
               <div class="timeline__body">
-                <p>
-                  Banking systems — full-stack .NET and Angular, T-SQL
-                  optimization, SSIS integration, and clean architecture for
-                  enterprise back-office platforms.
-                </p>
+                <ul class="impact">
+                  <li>
+                    Grew from trainee to full-stack engineer on
+                    <strong>enterprise banking</strong> applications.
+                  </li>
+                  <li>
+                    Built Angular + .NET UIs and optimized
+                    <strong>T-SQL / SQL Server</strong> workflows for reporting
+                    and back-office efficiency.
+                  </li>
+                  <li>
+                    Delivered <strong>SSIS</strong> integrations and applied
+                    design patterns / clean code for maintainability.
+                  </li>
+                </ul>
                 <p class="timeline__stack">
                   .NET · Angular · SQL Server · SSIS · Entity Framework · T-SQL
                 </p>
@@ -251,27 +388,369 @@
         </div>
       </section>
 
+      <section class="page" data-page="cases" id="page-cases" hidden>
+        <div class="section">
+          <p class="section__eyebrow">Case studies</p>
+          <h1 class="section__title section__title--page">Selected deep dives</h1>
+          <p class="prose intro">
+            Two stories that show how I approach platform and data-heavy backend
+            work end to end.
+          </p>
+
+          <div class="card-list">
+            <a class="card" href="#/cases/defined" data-link>
+              <p class="card__eyebrow">Defined.ai · 2024–Present</p>
+              <h2 class="card__title">.NET 10 migration & GDPR-ready platform</h2>
+              <p class="card__text">
+                30+ services migrated to .NET 10, architecture across 40+
+                microservices, and a GDPR solution in a complex Azure ecosystem.
+              </p>
+              <p class="card__cta">Read case study →</p>
+            </a>
+            <a class="card" href="#/cases/farfetch" data-link>
+              <p class="card__eyebrow">Farfetch · 2020–2024</p>
+              <h2 class="card__title">Recommendations at ~50ms</h2>
+              <p class="card__text">
+                Recommendation services at ~50ms with high throughput — polyglot
+                data, Kafka, and close collaboration with Data Science / ML.
+              </p>
+              <p class="card__cta">Read case study →</p>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" data-page="case-defined" id="page-case-defined" hidden>
+        <div class="section">
+          <p class="section__eyebrow">
+            <a href="#/cases" data-link>Cases</a> · Defined.ai
+          </p>
+          <h1 class="section__title section__title--page">
+            .NET 10 migration & GDPR-ready platform
+          </h1>
+          <p class="case__meta">Senior Software Engineer · 04.2024 — Present</p>
+
+          <div class="metrics">
+            <div class="metrics__item">
+              <p class="metrics__value">30+</p>
+              <p class="metrics__label">Microservices migrated to .NET 10</p>
+            </div>
+            <div class="metrics__item">
+              <p class="metrics__value">40+</p>
+              <p class="metrics__label">Services in the ecosystem</p>
+            </div>
+            <div class="metrics__item">
+              <p class="metrics__value">GDPR</p>
+              <p class="metrics__label">Privacy solution designed</p>
+            </div>
+          </div>
+
+          <div class="case-block">
+            <h2>Problem</h2>
+            <p>
+              A large microservices estate needed to move off legacy .NET
+              versions, stay operable at scale, and meet stronger privacy
+              expectations for sensitive user data — without freezing delivery.
+            </p>
+          </div>
+          <div class="case-block">
+            <h2>Approach</h2>
+            <ul class="impact">
+              <li>
+                Migrated <strong>30+ microservices</strong> from legacy .NET
+                versions to <strong>.NET 10</strong>.
+              </li>
+              <li>
+                Designed architecture across a complex ecosystem of
+                <strong>40+ microservices</strong>, including service boundaries
+                and cloud-native deployment on Azure.
+              </li>
+              <li>
+                Designed a <strong>GDPR</strong> solution covering data handling
+                and compliance needs across the platform.
+              </li>
+              <li>
+                Supported infrastructure evolution
+                (<strong>Azure Classic → ARM</strong>) with Docker, Kubernetes,
+                and resilient messaging via RabbitMQ.
+              </li>
+              <li>
+                Mentored junior engineers and aligned technical work with
+                business priorities.
+              </li>
+            </ul>
+          </div>
+          <div class="case-block">
+            <h2>Outcome</h2>
+            <p>
+              A modernized service fleet on .NET 10, clearer architecture across
+              40+ services, and a GDPR-ready approach to sensitive data — built
+              to scale with the product rather than fight it.
+            </p>
+          </div>
+          <p class="timeline__stack">
+            .NET 10 · WebAPI · SQL Server · Docker · RabbitMQ · Azure ·
+            Kubernetes · EF · Dapper
+          </p>
+          <div class="cta-row">
+            <a class="btn btn--ghost" href="#/cases" data-link>All cases</a>
+            <a class="btn btn--primary" href="#/contact" data-link>Contact</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" data-page="case-farfetch" id="page-case-farfetch" hidden>
+        <div class="section">
+          <p class="section__eyebrow">
+            <a href="#/cases" data-link>Cases</a> · Farfetch
+          </p>
+          <h1 class="section__title section__title--page">
+            Recommendations at ~50ms
+          </h1>
+          <p class="case__meta">Software Engineer .NET · 09.2020 — 03.2024</p>
+
+          <div class="metrics">
+            <div class="metrics__item">
+              <p class="metrics__value">~50ms</p>
+              <p class="metrics__label">Recommendation response time</p>
+            </div>
+            <div class="metrics__item">
+              <p class="metrics__value">High</p>
+              <p class="metrics__label">Throughput in production</p>
+            </div>
+            <div class="metrics__item">
+              <p class="metrics__value">ML</p>
+              <p class="metrics__label">Close DS / ML collaboration</p>
+            </div>
+          </div>
+
+          <div class="case-block">
+            <h2>Problem</h2>
+            <p>
+              Recommendation systems had to stay fast and reliable under heavy
+              traffic, while integrating evolving ML models and a heterogeneous
+              data landscape.
+            </p>
+          </div>
+          <div class="case-block">
+            <h2>Approach</h2>
+            <ul class="impact">
+              <li>
+                Built and maintained mission-critical
+                <strong>.NET</strong> recommendation services targeting
+                <strong>~50ms</strong> response times at high throughput.
+              </li>
+              <li>
+                Collaborated tightly with
+                <strong>Data Science and Machine Learning</strong> on
+                architecture and model integration.
+              </li>
+              <li>
+                Managed polyglot persistence —
+                <strong>MongoDB, SQL, Cassandra, Redis</strong> — for the right
+                store per access pattern.
+              </li>
+              <li>
+                Used <strong>Kafka</strong>, Docker, and Kubernetes for
+                distributed, cloud-native delivery; brought
+                <strong>Python</strong> into production data workflows where it
+                fit.
+              </li>
+            </ul>
+          </div>
+          <div class="case-block">
+            <h2>Outcome</h2>
+            <p>
+              A production recommendation path delivering around
+              <strong>50ms</strong> responses under high throughput — stable
+              enough to absorb ML-driven change without sacrificing the shopping
+              experience.
+            </p>
+          </div>
+          <p class="timeline__stack">
+            .NET · WebAPI · Kafka · MongoDB · Cassandra · Redis · Kubernetes ·
+            Python · Jenkins
+          </p>
+          <div class="cta-row">
+            <a class="btn btn--ghost" href="#/cases" data-link>All cases</a>
+            <a class="btn btn--primary" href="#/contact" data-link>Contact</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" data-page="projects" id="page-projects" hidden>
+        <div class="section">
+          <p class="section__eyebrow">Projects</p>
+          <h1 class="section__title section__title--page">Selected work & experiments</h1>
+          <p class="prose intro">
+            A short list of things I’m happy to discuss. Public repo links can be
+            added as soon as you share them.
+          </p>
+
+          <div class="card-list">
+            <article class="card card--static">
+              <p class="card__eyebrow">Platform</p>
+              <h2 class="card__title">Azure ARM migration patterns</h2>
+              <p class="card__text">
+                Lessons from moving a microservices estate from Classic to ARM —
+                resource structure, containers, and safer rollouts.
+              </p>
+            </article>
+            <article class="card card--static">
+              <p class="card__eyebrow">Data</p>
+              <h2 class="card__title">Polyglot persistence for recommendations</h2>
+              <p class="card__text">
+                How SQL, MongoDB, Cassandra, and Redis co-existed in a
+                high-throughput recommendation path.
+              </p>
+            </article>
+            <article class="card card--static">
+              <p class="card__eyebrow">Privacy</p>
+              <h2 class="card__title">GDPR-ready data handling</h2>
+              <p class="card__text">
+                Designing platform controls for consent, retention, and sensitive
+                data flows in a microservices world.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section class="page" data-page="stack" id="page-stack" hidden>
         <div class="section">
           <p class="section__eyebrow">Stack</p>
-          <h1 class="section__title section__title--page">Tools I reach for first</h1>
-          <ul class="stack-list">
-            <li>.NET / .NET Core</li>
-            <li>WebAPI</li>
-            <li>SQL Server</li>
-            <li>MongoDB</li>
-            <li>Cassandra</li>
-            <li>Redis</li>
-            <li>Docker</li>
-            <li>Kubernetes</li>
-            <li>Kafka</li>
-            <li>RabbitMQ</li>
-            <li>Azure</li>
-            <li>Entity Framework</li>
-          </ul>
-          <p class="stack__note">
-            Education: Licentiate in Computer Engineering — ISEP, Porto.
+          <h1 class="section__title section__title--page">Tools from the CV</h1>
+          <p class="prose intro">
+            Full technology set from my experience since 2017 — backends first,
+            plus the data, cloud, and frontend tools I’ve shipped with.
           </p>
+
+          <div class="stack-group">
+            <h2 class="stack-group__title">.NET &amp; backend</h2>
+            <ul class="stack-list">
+              <li>.NET</li>
+              <li>.NET Core</li>
+              <li>C#</li>
+              <li>ASP.NET</li>
+              <li>WebAPI</li>
+              <li>LINQ</li>
+              <li>Entity Framework</li>
+              <li>Dapper</li>
+              <li>Design Patterns</li>
+              <li>Architecture</li>
+              <li>MultiThreading</li>
+              <li>Clean Code</li>
+            </ul>
+          </div>
+
+          <div class="stack-group">
+            <h2 class="stack-group__title">Data &amp; persistence</h2>
+            <ul class="stack-list">
+              <li>SQL</li>
+              <li>SQL Server</li>
+              <li>T-SQL</li>
+              <li>MongoDB</li>
+              <li>Cassandra</li>
+              <li>Redis</li>
+              <li>SSIS</li>
+              <li>JSON</li>
+              <li>Apache Spark</li>
+            </ul>
+          </div>
+
+          <div class="stack-group">
+            <h2 class="stack-group__title">Cloud, messaging &amp; DevOps</h2>
+            <ul class="stack-list">
+              <li>Azure</li>
+              <li>Docker</li>
+              <li>Kubernetes</li>
+              <li>Microservices</li>
+              <li>Kafka</li>
+              <li>RabbitMQ</li>
+              <li>GIT</li>
+              <li>Jenkins</li>
+              <li>Continuous Integration</li>
+              <li>DevOps</li>
+            </ul>
+          </div>
+
+          <div class="stack-group">
+            <h2 class="stack-group__title">Frontend</h2>
+            <ul class="stack-list">
+              <li>Angular</li>
+              <li>Angular 2/4</li>
+              <li>TypeScript</li>
+              <li>JavaScript</li>
+              <li>HTML</li>
+              <li>CSS</li>
+            </ul>
+          </div>
+
+          <div class="stack-group">
+            <h2 class="stack-group__title">Languages &amp; adjacent</h2>
+            <ul class="stack-list">
+              <li>Python</li>
+              <li>Machine Learning</li>
+              <li>Web Services</li>
+            </ul>
+          </div>
+
+          <div class="stack-group">
+            <h2 class="stack-group__title">Ways of working</h2>
+            <ul class="stack-list">
+              <li>Scrum</li>
+              <li>Software Life Cycle Management</li>
+              <li>Versioning Management</li>
+              <li>Incident &amp; Request Management</li>
+              <li>Testing Activities</li>
+              <li>Time Management</li>
+            </ul>
+          </div>
+
+          <p class="stack__note">
+            Education: Degree in Computer Engineering — ISEP, Porto.
+            Trainings from the CV also covered Frameworks and related .NET
+            topics listed above.
+          </p>
+        </div>
+      </section>
+
+      <section class="page" data-page="more" id="page-more" hidden>
+        <div class="section">
+          <p class="section__eyebrow">More about me</p>
+          <h1 class="section__title section__title--page">Beyond work</h1>
+          <p class="prose intro more-intro">
+            Same person who ships backends — still chasing the ball, lifting,
+            and blasting
+            <a
+              href="https://open.spotify.com/album/2Y9IRtehByVkegoD7tjWqu"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Californication</a
+            >.
+          </p>
+
+          <div class="more-spotlight">
+            <p class="more-spotlight__value">20+</p>
+            <div class="more-spotlight__body">
+              <h2>Futsal</h2>
+              <p>Years on the court. Still playing.</p>
+            </div>
+          </div>
+
+          <dl class="more-facts">
+            <div class="more-facts__row">
+              <dt>Gym</dt>
+              <dd>Most weeks. No drama — just show up.</dd>
+            </div>
+            <div class="more-facts__row more-facts__row--feature">
+              <dt>Rock</dt>
+              <dd>
+                Favorite band
+                <span class="more-band">Red Hot Chili Peppers</span>
+              </dd>
+            </div>
+          </dl>
         </div>
       </section>
 
@@ -281,7 +760,8 @@
           <h1 class="section__title section__title--page">Let’s build something solid</h1>
           <p class="prose">
             Open to conversations about platform engineering, backend systems, and
-            cloud-native delivery.
+            cloud-native delivery — especially .NET on Azure and data-heavy
+            services.
           </p>
           <div class="hero__actions">
             <a class="btn btn--primary" href="mailto:jpsousa1812@hotmail.com"
@@ -302,6 +782,7 @@
     <footer class="site-footer">
       <p>
         <a href="#/" data-link>Home</a> ·
+        <a href="#/cases" data-link>Cases</a> ·
         <a href="mailto:jpsousa1812@hotmail.com">Email</a> ·
         <a
           href="https://www.linkedin.com/in/joao-sousa-software-engineer/"
@@ -328,6 +809,6 @@
       </svg>
     </button>
 
-    <script src="script.js?v=20260721b"></script>
+    <script src="script.js?v=20260721i"></script>
   </body>
 </html>
