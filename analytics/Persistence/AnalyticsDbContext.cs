@@ -29,6 +29,7 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
             entity.Property(x => x.VisitorHash).HasColumnName("visitor_hash").HasMaxLength(32);
             entity.Property(x => x.ClientIp).HasColumnName("client_ip").HasMaxLength(64);
             entity.Property(x => x.Country).HasColumnName("country").HasMaxLength(8);
+            entity.Property(x => x.City).HasColumnName("city").HasMaxLength(80);
             entity.Property(x => x.Language).HasColumnName("language").HasMaxLength(32);
             entity.Property(x => x.Screen).HasColumnName("screen").HasMaxLength(32);
             entity.Property(x => x.Browser).HasColumnName("browser").HasMaxLength(64);
@@ -62,6 +63,7 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
             ("client_ip", "text"),
             ("visitor_hash", "text"),
             ("country", "text"),
+            ("city", "text"),
             ("referrer", "text"),
             ("user_agent", "text"),
         };
@@ -88,6 +90,7 @@ public sealed class PageView
     public string? VisitorHash { get; set; }
     public string? ClientIp { get; set; }
     public string? Country { get; set; }
+    public string? City { get; set; }
     public string? Language { get; set; }
     public string? Screen { get; set; }
     public string? Browser { get; set; }

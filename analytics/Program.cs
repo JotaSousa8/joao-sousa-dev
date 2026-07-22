@@ -147,11 +147,17 @@ app.MapPost("/api/analytics/pageview", async (
     // Stable across days: same IP + UA ≈ same visitor (NAT/VPN caveats apply).
     var visitorHash = HashVisitor(clientIp, userAgent, salt);
 
-    // Prefer Cloudflare header when present; otherwise resolve via GeoIP.
+    // Prefer Cloudflare country header when present; resolve city (+ country fallback) via GeoIP.
     var country = Truncate(http.Request.Headers["CF-IPCountry"].ToString(), 8);
-    if (string.IsNullOrWhiteSpace(country) || country.Equals("XX", StringComparison.OrdinalIgnoreCase))
+    string? city = null;
+    var geo = await geoIp.ResolveAsync(ip, cancellationToken);
+    if (geo is not null)
     {
-        country = await geoIp.ResolveCountryAsync(ip, cancellationToken);
+        city = geo.City;
+        if (string.IsNullOrWhiteSpace(country) || country.Equals("XX", StringComparison.OrdinalIgnoreCase))
+        {
+            country = geo.CountryCode;
+        }
     }
 
     db.PageViews.Add(new PageView
@@ -162,7 +168,8 @@ app.MapPost("/api/analytics/pageview", async (
         UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
         VisitorHash = visitorHash,
         ClientIp = clientIp,
-        Country = string.IsNullOrWhiteSpace(country) ? null : country,
+        Country = string.IsNullOrWhiteSpace(country) || country.Equals("XX", StringComparison.OrdinalIgnoreCase) ? null : country,
+        City = city,
         Language = language,
         Screen = screen,
         Browser = browser,
@@ -247,6 +254,19 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
+    var byCity = await db.PageViews
+        .Where(x => x.City != null)
+        .GroupBy(x => new { x.City, x.Country })
+        .Select(g => new
+        {
+            city = g.Key.City!,
+            country = g.Key.Country,
+            views = g.Count()
+        })
+        .OrderByDescending(x => x.views)
+        .Take(20)
+        .ToListAsync();
+
     var byBrowser = await db.PageViews
         .Where(x => x.Browser != null)
         .GroupBy(x => x.Browser!)
@@ -292,7 +312,7 @@ app.MapGet("/api/analytics/summary", async (
 
     var ipRows = await db.PageViews
         .Where(x => x.ClientIp != null && x.OccurredAtUtc >= last30)
-        .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country })
+        .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country, x.City })
         .ToListAsync();
     var byIp = ipRows
         .GroupBy(x => x.ClientIp!)
@@ -311,6 +331,7 @@ app.MapGet("/api/analytics/summary", async (
                 daysActive = days.Count,
                 days,
                 country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
+                city = g.Select(x => x.City).FirstOrDefault(c => c != null),
                 firstSeenUtc = g.Min(x => x.OccurredAtUtc),
                 lastSeenUtc = g.Max(x => x.OccurredAtUtc),
             };
@@ -331,6 +352,7 @@ app.MapGet("/api/analytics/summary", async (
             x.Path,
             x.Referrer,
             x.Country,
+            x.City,
             x.Language,
             x.Screen,
             x.Browser,
@@ -363,6 +385,7 @@ app.MapGet("/api/analytics/summary", async (
         },
         byPath,
         byCountry,
+        byCity,
         byBrowser,
         byOs,
         byLanguage,
@@ -371,152 +394,6 @@ app.MapGet("/api/analytics/summary", async (
         byIp,
         recent
     });
-})
-.RequireCors("Site");
-
-app.MapGet("/api/analytics/schema", async (
-    HttpRequest httpRequest,
-    AnalyticsDbContext db,
-    IConfiguration config) =>
-{
-    if (!TryAuthorize(httpRequest, config, out var authError))
-    {
-        return authError!;
-    }
-
-    var connection = db.Database.GetDbConnection();
-    await connection.OpenAsync();
-
-    var tables = new List<object>();
-    await using (var listCmd = connection.CreateCommand())
-    {
-        listCmd.CommandText = """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-            ORDER BY table_name;
-            """;
-        await using var reader = await listCmd.ExecuteReaderAsync();
-        var tableNames = new List<string>();
-        while (await reader.ReadAsync())
-        {
-            tableNames.Add(reader.GetString(0));
-        }
-
-        await reader.CloseAsync();
-
-        foreach (var tableName in tableNames)
-        {
-            var columns = new List<object>();
-            await using (var colCmd = connection.CreateCommand())
-            {
-                colCmd.CommandText = """
-                    SELECT column_name, data_type, is_nullable,
-                           CASE WHEN EXISTS (
-                             SELECT 1
-                             FROM information_schema.table_constraints tc
-                             JOIN information_schema.key_column_usage kcu
-                               ON tc.constraint_name = kcu.constraint_name
-                              AND tc.table_schema = kcu.table_schema
-                             WHERE tc.table_schema = 'public'
-                               AND tc.table_name = @table
-                               AND tc.constraint_type = 'PRIMARY KEY'
-                               AND kcu.column_name = c.column_name
-                           ) THEN TRUE ELSE FALSE END AS is_pk
-                    FROM information_schema.columns c
-                    WHERE table_schema = 'public' AND table_name = @table
-                    ORDER BY ordinal_position;
-                    """;
-                var p = colCmd.CreateParameter();
-                p.ParameterName = "table";
-                p.Value = tableName;
-                colCmd.Parameters.Add(p);
-
-                await using var colReader = await colCmd.ExecuteReaderAsync();
-                while (await colReader.ReadAsync())
-                {
-                    columns.Add(new
-                    {
-                        name = colReader.GetString(0),
-                        type = colReader.IsDBNull(1) ? "" : colReader.GetString(1),
-                        notNull = string.Equals(colReader.GetString(2), "NO", StringComparison.OrdinalIgnoreCase),
-                        primaryKey = !colReader.IsDBNull(3) && colReader.GetBoolean(3)
-                    });
-                }
-            }
-
-            tables.Add(new { name = tableName, columns });
-        }
-    }
-
-    return Results.Ok(new { tables });
-})
-.RequireCors("Site");
-
-app.MapPost("/api/analytics/query", async (
-    SqlQueryRequest request,
-    HttpRequest httpRequest,
-    AnalyticsDbContext db,
-    IConfiguration config,
-    CancellationToken cancellationToken) =>
-{
-    if (!TryAuthorize(httpRequest, config, out var authError))
-    {
-        return authError!;
-    }
-
-    var sql = request.Sql?.Trim() ?? "";
-    if (string.IsNullOrWhiteSpace(sql))
-    {
-        return Results.BadRequest(new { error = "SQL is required." });
-    }
-
-    if (!IsReadOnlySelect(sql))
-    {
-        return Results.BadRequest(new { error = "Only a single read-only SELECT (or WITH … SELECT) is allowed." });
-    }
-
-    var maxRows = 200;
-    var connection = db.Database.GetDbConnection();
-    await connection.OpenAsync(cancellationToken);
-
-    try
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        command.CommandTimeout = 5;
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-        var columns = Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToList();
-        var rows = new List<Dictionary<string, object?>>();
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            if (rows.Count >= maxRows)
-            {
-                break;
-            }
-
-            var row = new Dictionary<string, object?>(StringComparer.Ordinal);
-            for (var i = 0; i < reader.FieldCount; i++)
-            {
-                row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
-            }
-
-            rows.Add(row);
-        }
-
-        return Results.Ok(new
-        {
-            columns,
-            rows,
-            rowCount = rows.Count,
-            truncated = rows.Count >= maxRows
-        });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { error = ex.Message });
-    }
 })
 .RequireCors("Site");
 
@@ -561,86 +438,6 @@ static string ResolveConnectionString(IConfiguration config)
     }
 
     return raw;
-}
-
-static bool TryAuthorize(HttpRequest httpRequest, IConfiguration config, out IResult? error)
-{
-    error = null;
-    var expectedKey = config["Analytics:ApiKey"];
-    if (string.IsNullOrWhiteSpace(expectedKey))
-    {
-        error = Results.Problem("Analytics:ApiKey is not configured.", statusCode: 500);
-        return false;
-    }
-
-    if (!httpRequest.Headers.TryGetValue("X-Api-Key", out var provided)
-        || !FixedTimeEquals(provided.ToString(), expectedKey))
-    {
-        error = Results.Unauthorized();
-        return false;
-    }
-
-    return true;
-}
-
-static bool IsReadOnlySelect(string sql)
-{
-    // Strip line comments for a light check; still reject multi-statement / writes.
-    var withoutLineComments = string.Join(
-        '\n',
-        sql.Split('\n').Select(line =>
-        {
-            var idx = line.IndexOf("--", StringComparison.Ordinal);
-            return idx >= 0 ? line[..idx] : line;
-        }));
-
-    var normalized = withoutLineComments.Trim().TrimEnd(';').Trim();
-    if (normalized.Length == 0 || normalized.Contains(';'))
-    {
-        return false;
-    }
-
-    var upper = normalized.ToUpperInvariant();
-    if (!(upper.StartsWith("SELECT", StringComparison.Ordinal) || upper.StartsWith("WITH", StringComparison.Ordinal)))
-    {
-        return false;
-    }
-
-    // Ignore string literals so values like 'into' do not trip keyword checks.
-    var withoutStrings = System.Text.RegularExpressions.Regex.Replace(
-        upper,
-        @"'([^']|'')*'",
-        "''",
-        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-
-    string[] banned =
-    [
-        "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "REPLACE",
-        "ATTACH", "DETACH", "VACUUM", "REINDEX", "GRANT", "REVOKE", "TRUNCATE",
-        "PRAGMA"
-    ];
-
-    foreach (var word in banned)
-    {
-        if (System.Text.RegularExpressions.Regex.IsMatch(
-                withoutStrings,
-                $@"\b{word}\b",
-                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
-        {
-            return false;
-        }
-    }
-
-    // Block SELECT … INTO / INSERT-like forms
-    if (System.Text.RegularExpressions.Regex.IsMatch(
-            withoutStrings,
-            @"\bINTO\b",
-            System.Text.RegularExpressions.RegexOptions.CultureInvariant))
-    {
-        return false;
-    }
-
-    return true;
 }
 
 static string? SanitizePath(string? path)
@@ -761,8 +558,5 @@ internal sealed record PageViewRequest(
     [property: JsonPropertyName("utmCampaign")] string? UtmCampaign,
     [property: JsonPropertyName("utmContent")] string? UtmContent,
     [property: JsonPropertyName("utmTerm")] string? UtmTerm);
-
-internal sealed record SqlQueryRequest(
-    [property: JsonPropertyName("sql")] string? Sql);
 
 internal sealed record AnalyticsRuntimeState(bool HasConnectionString);

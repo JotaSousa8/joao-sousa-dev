@@ -875,6 +875,21 @@
                 </div>
               </div>
               <div>
+                <h2 class="admin-block__title">By city</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-city">
+                    <thead>
+                      <tr>
+                        <th>City</th>
+                        <th>CC</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
                 <h2 class="admin-block__title">By browser</h2>
                 <div class="admin-table-wrap">
                   <table class="admin-table" id="admin-by-browser">
@@ -944,6 +959,7 @@
                     <th>Views</th>
                     <th>Days</th>
                     <th>CC</th>
+                    <th>City</th>
                     <th>Last seen (PT)</th>
                   </tr>
                 </thead>
@@ -980,6 +996,7 @@
                     <th>IP</th>
                     <th>Path</th>
                     <th>CC</th>
+                    <th>City</th>
                     <th>Device</th>
                     <th>Source</th>
                   </tr>
@@ -988,38 +1005,6 @@
               </table>
             </div>
 
-            <h2 class="admin-block__title">SQL console (read-only)</h2>
-            <p class="admin-form__hint">
-              Corre <code>SELECT</code> / <code>WITH … SELECT</code> no Postgres
-              (Supabase). Máx. 200 linhas. Tabela: <code>page_views</code>.
-            </p>
-            <div class="admin-schema" id="admin-schema"></div>
-            <form class="admin-sql" id="admin-sql-form">
-              <label class="admin-form__label" for="admin-sql">Query</label>
-              <textarea
-                id="admin-sql"
-                class="admin-sql__input"
-                rows="5"
-                spellcheck="false"
-              >SELECT id, occurred_at_utc, path, client_ip, country, browser, os
-FROM page_views
-ORDER BY occurred_at_utc DESC
-LIMIT 50;</textarea>
-              <div class="admin-range__actions">
-                <button class="btn btn--primary" type="submit">Run query</button>
-                <button class="btn btn--ghost" type="button" id="admin-sql-schema">
-                  Show schema
-                </button>
-              </div>
-            </form>
-            <p class="admin-form__hint" id="admin-sql-hint"></p>
-            <p class="admin-form__error" id="admin-sql-error" hidden></p>
-            <div class="admin-table-wrap">
-              <table class="admin-table admin-table--fit" id="admin-sql-result">
-                <thead></thead>
-                <tbody></tbody>
-              </table>
-            </div>
           </div>
         </div>
       </section>

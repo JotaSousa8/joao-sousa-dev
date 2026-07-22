@@ -52,40 +52,6 @@
         ],
         "url": "{{baseUrl}}/api/analytics/summary?from=2026-07-01T00:00&to=2026-07-31T23:59&limit=200"
       }
-    },
-    {
-      "name": "Schema",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "X-Api-Key",
-            "value": "{{apiKey}}"
-          }
-        ],
-        "url": "{{baseUrl}}/api/analytics/schema"
-      }
-    },
-    {
-      "name": "SQL query (read-only)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "X-Api-Key",
-            "value": "{{apiKey}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"sql\": \"SELECT id, occurred_at_utc, path, client_ip, country FROM page_views ORDER BY occurred_at_utc DESC LIMIT 50\"\n}"
-        },
-        "url": "{{baseUrl}}/api/analytics/query"
-      }
     }
   ]
 }

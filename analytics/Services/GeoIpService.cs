@@ -4,23 +4,24 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace AnalyticsApi.Services;
 
+public sealed record GeoLocation(string? CountryCode, string? City);
+
 public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<GeoIpService> logger)
 {
-    public async Task<string?> ResolveCountryAsync(IPAddress? ip, CancellationToken cancellationToken = default)
+    public async Task<GeoLocation?> ResolveAsync(IPAddress? ip, CancellationToken cancellationToken = default)
     {
         if (ip is null || IPAddress.IsLoopback(ip) || IsPrivate(ip))
         {
             return null;
         }
 
-        // Prefer IPv4-mapped form when present
         if (ip.IsIPv4MappedToIPv6)
         {
             ip = ip.MapToIPv4();
         }
 
-        var key = $"geo:{ip}";
-        if (cache.TryGetValue(key, out string? cached))
+        var key = $"geo-loc:{ip}";
+        if (cache.TryGetValue(key, out GeoLocation? cached))
         {
             return cached;
         }
@@ -34,12 +35,21 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
             }
 
             var payload = await response.Content.ReadFromJsonAsync<IpWhoResponse>(cancellationToken);
-            var code = payload is { Success: true } && !string.IsNullOrWhiteSpace(payload.CountryCode)
-                ? payload.CountryCode.Trim().ToUpperInvariant()
-                : null;
+            if (payload is not { Success: true })
+            {
+                return null;
+            }
 
-            cache.Set(key, code, TimeSpan.FromHours(12));
-            return code;
+            var country = string.IsNullOrWhiteSpace(payload.CountryCode)
+                ? null
+                : payload.CountryCode.Trim().ToUpperInvariant();
+            var city = string.IsNullOrWhiteSpace(payload.City)
+                ? null
+                : Truncate(payload.City.Trim(), 80);
+
+            var location = new GeoLocation(country, city);
+            cache.Set(key, location, TimeSpan.FromHours(12));
+            return location;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
@@ -47,6 +57,9 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
             return null;
         }
     }
+
+    private static string Truncate(string value, int max) =>
+        value.Length <= max ? value : value[..max];
 
     private static bool IsPrivate(IPAddress ip)
     {
@@ -64,5 +77,6 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
 
     private sealed record IpWhoResponse(
         [property: JsonPropertyName("success")] bool Success,
-        [property: JsonPropertyName("country_code")] string? CountryCode);
+        [property: JsonPropertyName("country_code")] string? CountryCode,
+        [property: JsonPropertyName("city")] string? City);
 }
