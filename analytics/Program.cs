@@ -421,13 +421,17 @@ app.Run();
 
 static string ResolveConnectionString(IConfiguration config)
 {
+    static string? NullIfEmpty(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     var raw =
-        config.GetConnectionString("Analytics")
-        ?? config["Analytics:ConnectionString"]
-        ?? config["DATABASE_URL"]
+        NullIfEmpty(config.GetConnectionString("Analytics"))
+        ?? NullIfEmpty(config["Analytics:ConnectionString"])
+        ?? NullIfEmpty(config["ANALYTICS_CONNECTION_STRING"])
+        ?? NullIfEmpty(Environment.GetEnvironmentVariable("ANALYTICS_CONNECTION_STRING"))
+        ?? NullIfEmpty(config["DATABASE_URL"])
         ?? "";
 
-    raw = raw.Trim();
     if (raw.Length == 0)
     {
         return raw;

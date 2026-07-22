@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>AnalyticsApi</RootNamespace>
+    <UserSecretsId>joao-sousa-analytics-local</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
