@@ -2,7 +2,7 @@
 
 Frontend stays on **GitHub Pages**. Only the `analytics/` API runs on Azure.
 
-Infra is defined with **Terraform** under `infra/`. GitHub Actions builds the image and runs `terraform apply`.
+Deploy today uses **Azure CLI** in GitHub Actions. Terraform files live under `infra/` for later (commented out in the workflow).
 
 ## One-time Azure setup
 
@@ -26,7 +26,7 @@ Easier path in Portal:
 2. **Certificates & secrets** → **Federated credentials** → **GitHub Actions deploying Azure resources**
    - Org: `JotaSousa8`
    - Repo: `joao-sousa-dev`
-   - Entity: `Branch` → `main`
+   - Entity: **Branch** → `main`
 3. **Subscriptions** → your sub → **Access control (IAM)** → add role **Contributor** to that app on a resource group (or subscription for first create).
 
 ### 3. GitHub repo secrets
@@ -48,67 +48,16 @@ Optional **Variables**:
 | `AZURE_CONTAINER_APP` | `ca-joaosousa-analytics` |
 | `AZURE_LOCATION` | `northeurope` |
 
-### 4. Terraform remote state (needed for CI)
-
-GitHub Actions runners are ephemeral. Without remote state, every run thinks nothing exists and tries to create the RG again.
-
-One-time bootstrap (change the storage account name if it is taken — must be globally unique):
-
-```bash
-az group create --name rg-joaosousa-tfstate --location northeurope
-az storage account create \
-  --name stjoaosousatfstate \
-  --resource-group rg-joaosousa-tfstate \
-  --location northeurope \
-  --sku Standard_LRS
-az storage container create \
-  --name tfstate \
-  --account-name stjoaosousatfstate
-```
-
-Then either:
-
-- Commit `infra/backend.azurerm.tf` (copy from `backend.azurerm.tf.example`), **or**
-- Leave only the example file — the workflow copies it automatically on CI.
-
-If you renamed the storage account, edit `backend.azurerm.tf.example` to match.
-
-### 5. Local Terraform (learning loop)
-
-Install [Terraform](https://developer.hashicorp.com/terraform/install) (≥ 1.5).
-
-```bash
-cd infra
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars: image + analytics_api_key + analytics_ip_salt
-
-az login
-terraform init
-terraform plan
-terraform apply
-terraform output url
-```
-
-If Azure already has the RG / env / app from the old `az` scripts, **import** them once instead of recreating:
-
-```bash
-cd infra
-terraform init
-terraform import azurerm_resource_group.analytics /subscriptions/<SUB_ID>/resourceGroups/rg-joaosousa-analytics-ne
-terraform import azurerm_container_app_environment.analytics /subscriptions/<SUB_ID>/resourceGroups/rg-joaosousa-analytics-ne/providers/Microsoft.App/managedEnvironments/ca-joaosousa-analytics-env
-terraform import azurerm_container_app.analytics /subscriptions/<SUB_ID>/resourceGroups/rg-joaosousa-analytics-ne/providers/Microsoft.App/containerApps/ca-joaosousa-analytics
-terraform plan   # should show small or no changes
-```
-
-### 6. Run the workflow
+### 4. Run the workflow
 - Push to `main`, or  
 - **Actions** → **Deploy analytics API** → **Run workflow**
 
-Keep **GitHub → Packages → `joao-sousa-analytics` → Public** so Azure can pull without a PAT.
+Keep **GitHub → Packages → `joao-sousa-analytics` → Public** so Azure can pull without a long-lived PAT.
 
-The job summary prints the public URL.
+The job summary prints the public URL, e.g.  
+`https://ca-joaosousa-analytics.xxxx.northeurope.azurecontainerapps.io`
 
-### 7. Point the website at the API
+### 5. Point the website at the API
 In `index.html` add (production):
 
 ```html
@@ -117,7 +66,7 @@ In `index.html` add (production):
 
 Commit + push that change (Pages only). Until this meta exists on production, tracking stays off on `joaosousadev.me` (localhost still uses `http://localhost:5095` automatically).
 
-### 8. Read stats
+### 6. Read stats
 
 **A) Site admin page** (no nav link — open directly):
 
@@ -140,15 +89,21 @@ curl -H "X-Api-Key: YOUR_ANALYTICS_API_KEY" https://YOUR-APP.../api/analytics/su
 ```
 
 ## Cost reminder
-Container Apps with **min replicas = 0** (configured in Terraform) scales to zero when idle → usually **€0–2/month** for a personal site. First cold start after idle can take a few seconds.
-
-The tfstate storage account is cheap (cents/month) when nearly empty.
+Container Apps with **min replicas = 0** (configured in the workflow) scales to zero when idle → usually **€0–2/month** for a personal site. First cold start after idle can take a few seconds.
 
 ## Same repo layout
 ```
 joao-sousa-dev/
   index.html                 → GitHub Pages
-  analytics/                 → Docker image
-  infra/                     → Terraform (RG, env, Container App)
+  analytics/                 → Docker image → Azure Container Apps (az CLI today)
+  infra/                     → Terraform (not wired in CI yet)
   .github/workflows/deploy-analytics.yml
 ```
+
+## Terraform later
+
+When you want to switch:
+
+1. Create Azure remote state storage (see older notes / `infra/backend.azurerm.tf.example`).
+2. Import existing RG / env / Container App into Terraform state.
+3. In `.github/workflows/deploy-analytics.yml`: comment out the Azure CLI steps and uncomment the Terraform block.
