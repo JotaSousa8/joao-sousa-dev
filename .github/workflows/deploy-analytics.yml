@@ -1,6 +1,6 @@
 # Deploy Analytics API → Azure Container Apps
 #
-# Triggers when analytics code changes on main (or manual run).
+# Triggers on every push to main (or manual run).
 # One-time Azure setup: see analytics/DEPLOY.md
 
 name: Deploy analytics API
@@ -8,9 +8,6 @@ name: Deploy analytics API
 on:
   push:
     branches: [main]
-    paths:
-      - "analytics/**"
-      - ".github/workflows/deploy-analytics.yml"
   workflow_dispatch:
 
 env:
