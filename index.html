@@ -847,26 +847,6 @@
                 </div>
               </div>
               <div>
-                <h2 class="admin-block__title">By IP (30d)</h2>
-                <p class="admin-form__hint">
-                  Mesmo IP ≈ mesma rede (NAT/VPN podem agrupar ou separar pessoas).
-                </p>
-                <div class="admin-table-wrap">
-                  <table class="admin-table" id="admin-by-ip">
-                    <thead>
-                      <tr>
-                        <th>IP</th>
-                        <th>Views</th>
-                        <th>Days</th>
-                        <th>Country</th>
-                        <th>Last seen (PT)</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
-                </div>
-              </div>
-              <div>
                 <h2 class="admin-block__title">Views by path</h2>
                 <div class="admin-table-wrap">
                   <table class="admin-table" id="admin-by-path">
@@ -952,6 +932,25 @@
               </div>
             </div>
 
+            <h2 class="admin-block__title">By IP (30d)</h2>
+            <p class="admin-form__hint">
+              Mesmo IP ≈ mesma rede (NAT/VPN podem agrupar ou separar pessoas).
+            </p>
+            <div class="admin-table-wrap">
+              <table class="admin-table admin-table--fit" id="admin-by-ip">
+                <thead>
+                  <tr>
+                    <th>IP</th>
+                    <th>Views</th>
+                    <th>Days</th>
+                    <th>CC</th>
+                    <th>Last seen (PT)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
             <h2 class="admin-block__title">Recent events</h2>
             <p class="admin-form__hint" id="admin-tz-note">
               Horário: Europe/Lisbon (Portugal). Os eventos são guardados em UTC e
@@ -975,24 +974,21 @@
             </form>
             <p class="admin-form__hint" id="admin-range-hint"></p>
             <div class="admin-table-wrap">
-              <table class="admin-table admin-table--wide" id="admin-recent">
+              <table class="admin-table admin-table--fit" id="admin-recent">
                 <thead>
                   <tr>
                     <th>When (PT)</th>
                     <th>IP</th>
                     <th>Path</th>
-                    <th>Country</th>
-                    <th>Browser</th>
-                    <th>OS</th>
-                    <th>Language</th>
-                    <th>Screen</th>
-                    <th>Referrer</th>
-                    <th>UTM</th>
+                    <th>CC</th>
+                    <th>Device</th>
+                    <th>Source</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
               </table>
             </div>
+
             <h2 class="admin-block__title">SQL console (read-only)</h2>
             <p class="admin-form__hint">
               Corre <code>SELECT</code> / <code>WITH … SELECT</code> na SQLite. Máx. 200
@@ -1020,12 +1016,16 @@ LIMIT 50;</textarea>
             <p class="admin-form__hint" id="admin-sql-hint"></p>
             <p class="admin-form__error" id="admin-sql-error" hidden></p>
             <div class="admin-table-wrap">
-              <table class="admin-table admin-table--wide" id="admin-sql-result">
+              <table class="admin-table admin-table--fit" id="admin-sql-result">
                 <thead></thead>
                 <tbody></tbody>
               </table>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="page" data-page="contact" id="page-contact" hidden>
         <div class="section">
           <p class="section__eyebrow">Contact</p>
           <h1 class="section__title section__title--page">Let’s build something solid</h1>

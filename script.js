@@ -387,13 +387,13 @@ const renderAdminStats = (data) => {
     (row) => formatLisbonTime(row.occurredAtUtc),
     (row) => row.ip || "—",
     "path",
-    "country",
-    "browser",
-    "os",
-    "language",
-    "screen",
-    (row) => row.referrer || "—",
-    formatUtm,
+    (row) => row.country || "—",
+    (row) => [row.browser, row.os, row.screen].filter(Boolean).join(" · ") || "—",
+    (row) => {
+      const utm = formatUtm(row);
+      if (utm !== "—") return utm;
+      return row.referrer || "—";
+    },
   ]);
 
   if (adminStats) adminStats.hidden = false;
