@@ -11,14 +11,32 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = ResolveConnectionString(builder.Configuration);
-var hasConnectionString = !string.IsNullOrWhiteSpace(connectionString);
-if (!hasConnectionString)
+// Never throw during connection-string parsing — a bad Supabase URI must not
+// prevent Kestrel from binding /health (ACA otherwise keeps the old SQLite revision).
+const string MissingDb =
+    "Host=127.0.0.1;Port=5432;Database=missing;Username=missing;Password=missing;SSL Mode=Disable";
+string connectionString;
+var hasConnectionString = false;
+try
 {
-    // Allow the process to start so /health can report misconfiguration instead of
-    // Azure keeping an old SQLite revision forever.
-    Console.Error.WriteLine("WARNING: Missing ConnectionStrings:Analytics. Set ANALYTICS_CONNECTION_STRING.");
-    connectionString = "Host=127.0.0.1;Port=5432;Database=missing;Username=missing;Password=missing";
+    connectionString = ResolveConnectionString(builder.Configuration);
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        Console.Error.WriteLine("WARNING: Missing ConnectionStrings:Analytics. Set ANALYTICS_CONNECTION_STRING.");
+        connectionString = MissingDb;
+    }
+    else
+    {
+        // Validate early; invalid keywords / mangled secrets throw here instead of in DI.
+        _ = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        hasConnectionString = true;
+    }
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"WARNING: Invalid ConnectionStrings:Analytics ({ex.GetType().Name}: {ex.Message}). Starting degraded.");
+    connectionString = MissingDb;
+    hasConnectionString = false;
 }
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -94,42 +112,24 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 
 app.UseForwardedHeaders();
-
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
-    try
-    {
-        await db.EnsureSchemaAsync();
-        logger.LogInformation("Database schema ensured.");
-    }
-    catch (Exception ex)
-    {
-        // Do not crash the process — otherwise Azure keeps the previous (SQLite) revision.
-        logger.LogError(ex, "Failed to ensure database schema. Check ConnectionStrings:Analytics / Supabase URI.");
-    }
-}
-
 app.UseRateLimiter();
 app.UseCors("Site");
 
+// Bind health first — no DB work before Kestrel can accept probes/traffic.
 app.MapGet("/health", async (AnalyticsDbContext db, AnalyticsRuntimeState runtime) =>
 {
-    string database;
-    bool canConnect;
-    try
+    const string database = "postgresql";
+    var canConnect = false;
+    if (runtime.HasConnectionString)
     {
-        var provider = db.Database.ProviderName ?? "unknown";
-        database = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ? "postgresql"
-            : provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) ? "sqlite"
-            : provider;
-        canConnect = runtime.HasConnectionString && await db.Database.CanConnectAsync();
-    }
-    catch
-    {
-        database = "postgresql";
-        canConnect = false;
+        try
+        {
+            canConnect = await db.Database.CanConnectAsync();
+        }
+        catch
+        {
+            canConnect = false;
+        }
     }
 
     return Results.Ok(new
@@ -139,6 +139,26 @@ app.MapGet("/health", async (AnalyticsDbContext db, AnalyticsRuntimeState runtim
         canConnect,
         connectionStringConfigured = runtime.HasConnectionString,
         build = Environment.GetEnvironmentVariable("BUILD_SHA") ?? "unknown"
+    });
+});
+
+// Schema ensure after listen so a bad DB never blocks process start.
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            await using var scope = app.Services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+            await db.EnsureSchemaAsync();
+            logger.LogInformation("Database schema ensured.");
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogError(ex, "Failed to ensure database schema. Check ConnectionStrings:Analytics / Supabase URI.");
+        }
     });
 });
 
@@ -424,6 +444,23 @@ static string ResolveConnectionString(IConfiguration config)
     static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    // Optional base64 wrapper avoids Azure CLI mangling '=' / spaces in secrets.
+    var b64 =
+        NullIfEmpty(config["ConnectionStrings:AnalyticsB64"])
+        ?? NullIfEmpty(config["ANALYTICS_CONNECTION_STRING_B64"])
+        ?? NullIfEmpty(Environment.GetEnvironmentVariable("ANALYTICS_CONNECTION_STRING_B64"));
+    if (b64 is not null)
+    {
+        try
+        {
+            return NormalizeConnectionString(Encoding.UTF8.GetString(Convert.FromBase64String(b64)));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("ANALYTICS_CONNECTION_STRING_B64 is not valid base64.", ex);
+        }
+    }
+
     var raw =
         NullIfEmpty(config.GetConnectionString("Analytics"))
         ?? NullIfEmpty(config["Analytics:ConnectionString"])
@@ -432,16 +469,22 @@ static string ResolveConnectionString(IConfiguration config)
         ?? NullIfEmpty(config["DATABASE_URL"])
         ?? "";
 
-    if (raw.Length == 0)
-    {
-        return raw;
-    }
+    return raw.Length == 0 ? raw : NormalizeConnectionString(raw);
+}
+
+static string NormalizeConnectionString(string raw)
+{
+    raw = raw.Trim().Trim('"');
 
     // Supabase URI → Npgsql key=value form when needed
     if (raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
         || raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
     {
-        var uri = new Uri(raw);
+        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri))
+        {
+            throw new InvalidOperationException("Connection string looks like a Postgres URI but could not be parsed. URL-encode special characters in the password.");
+        }
+
         var userInfo = uri.UserInfo.Split(':', 2);
         var user = Uri.UnescapeDataString(userInfo[0]);
         var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";

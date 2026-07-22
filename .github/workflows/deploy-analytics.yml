@@ -118,6 +118,10 @@ jobs:
           fi
 
       - name: Deploy new revision
+        env:
+          ANALYTICS_API_KEY: ${{ secrets.ANALYTICS_API_KEY }}
+          ANALYTICS_IP_SALT: ${{ secrets.ANALYTICS_IP_SALT }}
+          ANALYTICS_CONNECTION_STRING: ${{ secrets.ANALYTICS_CONNECTION_STRING }}
         run: |
           set -euo pipefail
           RG="${{ env.AZURE_RESOURCE_GROUP }}"
@@ -128,19 +132,66 @@ jobs:
 
           echo "Deploying image ${IMAGE_SHORT} → revision ${EXPECTED_REV}"
 
-          az containerapp secret set \
-            --name "$APP" \
-            --resource-group "$RG" \
-            --secrets \
-              "analytics-api-key=${{ secrets.ANALYTICS_API_KEY }}" \
-              "analytics-ip-salt=${{ secrets.ANALYTICS_IP_SALT }}" \
-              "analytics-connection-string=${{ secrets.ANALYTICS_CONNECTION_STRING }}" \
-            --output none
+          # Validate secrets without printing values. Prefer URI form; ADO.NET with spaces
+          # is also OK because we set secrets via Python argv (first '=' only).
+          CONN_B64="$(python3 - <<'PY'
+import os, sys, base64
+conn = os.environ.get("ANALYTICS_CONNECTION_STRING") or ""
+key = os.environ.get("ANALYTICS_API_KEY") or ""
+salt = os.environ.get("ANALYTICS_IP_SALT") or ""
+print(f"api_key_len={len(key)} ip_salt_len={len(salt)} conn_len={len(conn)}", file=sys.stderr)
+if not key or not salt or not conn:
+    print("ERROR: ANALYTICS_API_KEY / ANALYTICS_IP_SALT / ANALYTICS_CONNECTION_STRING must be set in GitHub secrets.", file=sys.stderr)
+    sys.exit(1)
+low = conn.strip().lower()
+ok = low.startswith(("postgres://", "postgresql://", "host="))
+print(f"conn_looks_like_postgres={ok}", file=sys.stderr)
+if not ok:
+    print("ERROR: ANALYTICS_CONNECTION_STRING must be a postgresql:// URI or Host=... Npgsql string.", file=sys.stderr)
+    sys.exit(1)
+if "[your-password]" in low or "your-password" in low:
+    print("ERROR: Connection string still has a password placeholder.", file=sys.stderr)
+    sys.exit(1)
+sys.stdout.write(base64.b64encode(conn.strip().encode("utf-8")).decode("ascii"))
+PY
+)"
+          echo "conn_b64_len=${#CONN_B64}"
 
-          # App has been stuck in multiple-revision mode with maxReplicas=1: the old
-          # revision keeps the only replica and the new one never leaves Activating,
-          # so /health stays on the ancient {"status":"ok"} payload.
-          # Allow two replicas during cutover, shift traffic, then return to single mode.
+          # Set secrets with subprocess argv list (no shell splitting on spaces / '=').
+          export APP RG CONN_B64
+          python3 - <<'PY'
+import os, subprocess
+app = os.environ["APP"]
+rg = os.environ["RG"]
+b64 = os.environ["CONN_B64"]
+cmd = [
+    "az", "containerapp", "secret", "set",
+    "--name", app,
+    "--resource-group", rg,
+    "--secrets",
+    f"analytics-api-key={os.environ['ANALYTICS_API_KEY']}",
+    f"analytics-ip-salt={os.environ['ANALYTICS_IP_SALT']}",
+    # Base64 value only uses A-Za-z0-9+/= — safe for CLI name=value parsing.
+    f"analytics-connection-string-b64={b64}",
+    "--output", "none",
+]
+print("Setting Container App secrets (api-key, ip-salt, connection-string-b64)...")
+subprocess.check_call(cmd)
+PY
+
+          dump_logs() {
+            echo "::group::ACA revision ${EXPECTED_REV}"
+            az containerapp revision show -n "$APP" -g "$RG" --revision "$EXPECTED_REV" -o json || true
+            echo "::endgroup::"
+            echo "::group::ACA console logs"
+            az containerapp logs show -n "$APP" -g "$RG" --revision "$EXPECTED_REV" --type console --tail 200 || true
+            echo "::endgroup::"
+            echo "::group::ACA system logs"
+            az containerapp logs show -n "$APP" -g "$RG" --revision "$EXPECTED_REV" --type system --tail 100 || true
+            echo "::endgroup::"
+          }
+
+          # Cutover: allow 2 replicas so the new revision can start while the old one still runs.
           az containerapp revision set-mode \
             --name "$APP" \
             --resource-group "$RG" \
@@ -152,12 +203,13 @@ jobs:
             --resource-group "$RG" \
             --image "$IMAGE_SHORT" \
             --revision-suffix "${SHA_SHORT}" \
+            --cpu 0.5 --memory 1.0Gi \
             --min-replicas 1 \
             --max-replicas 2 \
             --set-env-vars \
               "Analytics__ApiKey=secretref:analytics-api-key" \
               "Analytics__IpSalt=secretref:analytics-ip-salt" \
-              "ConnectionStrings__Analytics=secretref:analytics-connection-string" \
+              "ConnectionStrings__AnalyticsB64=secretref:analytics-connection-string-b64" \
               "ASPNETCORE_URLS=http://+:8080" \
               "BUILD_SHA=${{ github.sha }}" \
             --output none
@@ -175,6 +227,11 @@ jobs:
               READY=1
               break
             fi
+            if [[ "$STATE" == "Failed" || "$STATE" == "ActivationFailed" ]]; then
+              echo "Revision entered terminal failure state: ${STATE}"
+              dump_logs
+              exit 1
+            fi
             sleep 5
           done
 
@@ -185,7 +242,7 @@ jobs:
 
           if [[ "$READY" -ne 1 ]]; then
             echo "New revision ${EXPECTED_REV} never reached Running"
-            az containerapp revision show -n "$APP" -g "$RG" --revision "$EXPECTED_REV" -o json || true
+            dump_logs
             exit 1
           fi
 
@@ -195,7 +252,6 @@ jobs:
             --revision-weight "${EXPECTED_REV}=100" \
             --output none
 
-          # Drop every other active revision so maxReplicas=1 can work again.
           mapfile -t OTHER_REVS < <(az containerapp revision list \
             --name "$APP" \
             --resource-group "$RG" \
@@ -211,26 +267,13 @@ jobs:
               --output none || true
           done
 
-          az containerapp revision restart \
-            --name "$APP" \
-            --resource-group "$RG" \
-            --revision "$EXPECTED_REV" \
-            --output none || true
-
-          # Future deploys: update replaces the active revision automatically.
           az containerapp revision set-mode \
             --name "$APP" \
             --resource-group "$RG" \
             --mode single \
             --output none
 
-          az containerapp update \
-            --name "$APP" \
-            --resource-group "$RG" \
-            --min-replicas 0 \
-            --max-replicas 1 \
-            --output none
-
+          # Keep minReplicas=1 until health passes (avoids scale-to-zero flake), then idle scale.
           FQDN=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
           echo "### Analytics API" >> "$GITHUB_STEP_SUMMARY"
           echo "URL: \`https://${FQDN}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -240,23 +283,37 @@ jobs:
 
           echo "Waiting for Postgres health on https://${FQDN}/health ..."
           OK=0
-          for i in $(seq 1 24); do
+          CONNECTED=0
+          for i in $(seq 1 36); do
             BODY=$(curl -fsS "https://${FQDN}/health" || true)
             echo "health attempt ${i}: ${BODY}"
             if echo "${BODY}" | grep -q '"database":"postgresql"'; then
               OK=1
-              break
+              if echo "${BODY}" | grep -q '"canConnect":true'; then
+                CONNECTED=1
+                break
+              fi
             fi
             sleep 5
           done
+
           if [[ "$OK" -ne 1 ]]; then
-            echo "Health check never reported database=postgresql"
-            az containerapp revision list -n "$APP" -g "$RG" \
-              --query "[].{name:name,image:properties.template.containers[0].image,active:properties.active,running:properties.runningState}" \
-              -o table || true
-            az containerapp ingress traffic show -n "$APP" -g "$RG" -o table || true
+            echo "Health check never reported database=postgresql (new image not serving)"
+            dump_logs
             exit 1
           fi
+          if [[ "$CONNECTED" -ne 1 ]]; then
+            echo "Image is live but canConnect=false — fix ANALYTICS_CONNECTION_STRING (Supabase URI, port 5432, real password)."
+            dump_logs
+            exit 1
+          fi
+
+          az containerapp update \
+            --name "$APP" \
+            --resource-group "$RG" \
+            --min-replicas 0 \
+            --max-replicas 1 \
+            --output none
 
       # --- Terraform path (disabled for now; infra/ is ready for later) ---
       # Prerequisites before enabling: Azure tfstate storage + import existing RG/env/app.
