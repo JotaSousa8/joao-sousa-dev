@@ -12,10 +12,13 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = ResolveConnectionString(builder.Configuration);
-if (string.IsNullOrWhiteSpace(connectionString))
+var hasConnectionString = !string.IsNullOrWhiteSpace(connectionString);
+if (!hasConnectionString)
 {
-    throw new InvalidOperationException(
-        "Missing Postgres connection string. Set ConnectionStrings:Analytics (or Analytics:ConnectionString / DATABASE_URL).");
+    // Allow the process to start so /health can report misconfiguration instead of
+    // Azure keeping an old SQLite revision forever.
+    Console.Error.WriteLine("WARNING: Missing ConnectionStrings:Analytics. Set ANALYTICS_CONNECTION_STRING.");
+    connectionString = "Host=127.0.0.1;Port=5432;Database=missing;Username=missing;Password=missing";
 }
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -23,6 +26,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
     options.SerializerOptions.Converters.Add(new UtcNullableDateTimeJsonConverter());
 });
+
+builder.Services.AddSingleton(new AnalyticsRuntimeState(hasConnectionString));
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -74,23 +79,46 @@ app.UseForwardedHeaders();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
-    await db.EnsureSchemaAsync();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+    try
+    {
+        await db.EnsureSchemaAsync();
+        logger.LogInformation("Database schema ensured.");
+    }
+    catch (Exception ex)
+    {
+        // Do not crash the process — otherwise Azure keeps the previous (SQLite) revision.
+        logger.LogError(ex, "Failed to ensure database schema. Check ConnectionStrings:Analytics / Supabase URI.");
+    }
 }
 
 app.UseRateLimiter();
 app.UseCors("Site");
 
-app.MapGet("/health", async (AnalyticsDbContext db) =>
+app.MapGet("/health", async (AnalyticsDbContext db, AnalyticsRuntimeState runtime) =>
 {
-    var provider = db.Database.ProviderName ?? "unknown";
-    var canConnect = await db.Database.CanConnectAsync();
+    string database;
+    bool canConnect;
+    try
+    {
+        var provider = db.Database.ProviderName ?? "unknown";
+        database = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ? "postgresql"
+            : provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) ? "sqlite"
+            : provider;
+        canConnect = runtime.HasConnectionString && await db.Database.CanConnectAsync();
+    }
+    catch
+    {
+        database = "postgresql";
+        canConnect = false;
+    }
+
     return Results.Ok(new
     {
         status = canConnect ? "ok" : "degraded",
-        database = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ? "postgresql"
-            : provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) ? "sqlite"
-            : provider,
-        canConnect
+        database,
+        canConnect,
+        connectionStringConfigured = runtime.HasConnectionString
     });
 });
 
@@ -736,3 +764,5 @@ internal sealed record PageViewRequest(
 
 internal sealed record SqlQueryRequest(
     [property: JsonPropertyName("sql")] string? Sql);
+
+internal sealed record AnalyticsRuntimeState(bool HasConnectionString);
