@@ -71,6 +71,11 @@ jobs:
           ENV_NAME="${APP}-env"
           IMAGE_SHORT="${{ steps.meta.outputs.image }}:$(echo '${{ github.sha }}' | cut -c1-7)"
 
+          echo "Registering required resource providers..."
+          az provider register --namespace Microsoft.App --wait
+          az provider register --namespace Microsoft.OperationalInsights --wait
+          az provider register --namespace Microsoft.ContainerRegistry --wait
+
           az group create --name "$RG" --location "$LOC" --output none
 
           if ! az containerapp env show --name "$ENV_NAME" --resource-group "$RG" &>/dev/null; then
