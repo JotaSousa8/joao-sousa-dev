@@ -378,7 +378,18 @@ const renderAdminStats = (data) => {
     rangeHint.textContent = `Range: ${formatLisbonTime(data.range.fromUtc)} → ${formatLisbonTime(data.range.toUtc)} · matched ${data.range.matched}, showing ${data.range.returned}`;
   }
 
-  fillTable("admin-by-day", data.byDay || [], ["day", "views"]);
+  fillTable("admin-by-day", data.byDay || [], [
+    "day",
+    "views",
+    (row) => row.uniqueIps ?? "—",
+  ]);
+  fillTable("admin-by-day-ip", data.byDayIp || [], [
+    "day",
+    "ip",
+    "views",
+    (row) => row.country || "—",
+    (row) => row.city || "—",
+  ]);
   fillTable("admin-by-ip", data.byIp || [], [
     "ip",
     "views",

@@ -386,14 +386,40 @@ app.MapGet("/api/analytics/summary", async (
         .ToListAsync();
 
     var dayWindowStart = now.AddDays(-30);
-    var dayStamps = await db.PageViews
+    var dayRows = await db.PageViews
         .Where(x => x.OccurredAtUtc >= dayWindowStart)
-        .Select(x => x.OccurredAtUtc)
+        .Select(x => new { x.OccurredAtUtc, x.ClientIp, x.Country, x.City })
         .ToListAsync();
-    var byDay = dayStamps
-        .GroupBy(x => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(x, DateTimeKind.Utc), lisbon).Date)
-        .Select(g => new { day = g.Key.ToString("yyyy-MM-dd"), views = g.Count() })
+    var byDay = dayRows
+        .GroupBy(x => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(x.OccurredAtUtc, DateTimeKind.Utc), lisbon).Date)
+        .Select(g => new
+        {
+            day = g.Key.ToString("yyyy-MM-dd"),
+            views = g.Count(),
+            uniqueIps = g.Select(x => x.ClientIp).Where(ip => ip != null).Distinct().Count()
+        })
         .OrderBy(x => x.day)
+        .ToList();
+
+    var byDayIp = dayRows
+        .Where(x => x.ClientIp != null)
+        .GroupBy(x => new
+        {
+            Day = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(x.OccurredAtUtc, DateTimeKind.Utc), lisbon).Date,
+            Ip = x.ClientIp!
+        })
+        .Select(g => new
+        {
+            day = g.Key.Day.ToString("yyyy-MM-dd"),
+            ip = g.Key.Ip,
+            views = g.Count(),
+            country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
+            city = g.Select(x => x.City).FirstOrDefault(c => c != null),
+        })
+        .OrderByDescending(x => x.day)
+        .ThenByDescending(x => x.views)
+        .ThenBy(x => x.ip)
+        .Take(300)
         .ToList();
 
     var ipRows = await db.PageViews
@@ -489,6 +515,7 @@ app.MapGet("/api/analytics/summary", async (
         byLanguage,
         byUtmSource,
         byDay,
+        byDayIp,
         byIp,
         recent
     });
