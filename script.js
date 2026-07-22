@@ -63,6 +63,34 @@ const normalizeRoute = (hash) => {
   return routeMap[raw] || "home";
 };
 
+const analyticsMeta = document.querySelector('meta[name="analytics-endpoint"]');
+const analyticsEndpoint = (
+  analyticsMeta?.getAttribute("content") ||
+  (["localhost", "127.0.0.1"].includes(location.hostname)
+    ? "http://localhost:5095"
+    : "")
+).replace(/\/$/, "");
+
+const pathForRoute = (route) => {
+  const hash = hashForRoute[route] || "#/";
+  return hash === "#/" ? "/" : hash.replace(/^#/, "") || "/";
+};
+
+const trackPageView = (route) => {
+  if (!analyticsEndpoint) return;
+  const payload = JSON.stringify({
+    path: pathForRoute(route),
+    referrer: document.referrer || "",
+  });
+  fetch(`${analyticsEndpoint}/api/analytics/pageview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: payload,
+    keepalive: true,
+    mode: "cors",
+  }).catch(() => {});
+};
+
 const showPage = (route) => {
   pages.forEach((page) => {
     const match = page.dataset.page === route;
@@ -78,6 +106,7 @@ const showPage = (route) => {
   document.title = pageTitles[route] || pageTitles.home;
   window.scrollTo({ top: 0, behavior: "auto" });
   onScroll();
+  trackPageView(route);
 };
 
 const navigate = (route, replace = false) => {
@@ -139,7 +168,7 @@ const setTheme = (theme) => {
   localStorage.setItem("theme", theme);
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute("content", theme === "dark" ? "#0a0a0a" : "#ffffff");
+    meta.setAttribute("content", theme === "dark" ? "#071412" : "#0f9d8a");
   }
   if (themeToggle) {
     themeToggle.setAttribute(

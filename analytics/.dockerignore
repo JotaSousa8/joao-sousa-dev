@@ -1,0 +1,10 @@
+**/.dockerignore
+**/bin
+**/obj
+**/data
+**/*.db
+**/*.db-*
+**/.vs
+**/appsettings.*.local.json
+README.md
+Dockerfile

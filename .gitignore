@@ -5,3 +5,8 @@ cv.zip
 cv-unzip/
 cv-extract.txt
 *.log
+analytics/bin/
+analytics/obj/
+analytics/data/
+analytics/*.db
+analytics/*.db-*
