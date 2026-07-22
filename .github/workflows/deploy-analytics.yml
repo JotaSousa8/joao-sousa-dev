@@ -132,15 +132,15 @@ jobs:
 
           echo "Deploying image ${IMAGE_SHORT} → revision ${EXPECTED_REV}"
 
-          # Validate secrets without printing values.
+          # Validate + normalize secrets (password '#' must become %23 in URIs).
           # Heredoc body must stay indented for YAML; Actions strips the common indent.
-          CONN_B64="$(python3 - <<'PY'
+          python3 - <<'PY'
           import os, sys, base64
-          from urllib.parse import unquote
+          from urllib.parse import unquote, quote
           conn = (os.environ.get("ANALYTICS_CONNECTION_STRING") or "").strip().strip('"').strip("'")
           key = os.environ.get("ANALYTICS_API_KEY") or ""
           salt = os.environ.get("ANALYTICS_IP_SALT") or ""
-          print(f"api_key_len={len(key)} ip_salt_len={len(salt)} conn_len={len(conn)}", file=sys.stderr)
+          print(f"api_key_len={len(key)} ip_salt_len={len(salt)} conn_len={len(conn)}")
           if not key or not salt or not conn:
               print("ERROR: ANALYTICS_API_KEY / ANALYTICS_IP_SALT / ANALYTICS_CONNECTION_STRING must be set.", file=sys.stderr)
               sys.exit(1)
@@ -152,11 +152,14 @@ jobs:
               sys.exit(1)
 
           def parse_pg_uri(uri: str):
+              # Manual parse: urllib treats '#' as fragment and breaks passwords like 'xx#yy'.
               if "://" not in uri:
                   raise ValueError("missing ://")
               _, rest = uri.split("://", 1)
+              db = "postgres"
               if "/" in rest:
-                  rest, _path = rest.split("/", 1)
+                  rest, db = rest.split("/", 1)
+                  db = db or "postgres"
               if "@" not in rest:
                   raise ValueError(
                       "missing USER:PASSWORD@HOST — expected "
@@ -166,41 +169,45 @@ jobs:
               if ":" not in userinfo:
                   raise ValueError(
                       "missing :PASSWORD before @HOST. "
-                      "You likely put the DB password where the port goes. "
                       "Correct: ...://postgres.PROJECT:YOUR_PASSWORD@HOST:5432/postgres"
                   )
               user, password = userinfo.split(":", 1)
               user, password = unquote(user), unquote(password)
-              host, port = hostport, None
+              host, port = hostport, 5432
               if ":" in hostport and not hostport.startswith("["):
                   host, port_s = hostport.rsplit(":", 1)
                   if not port_s.isdigit():
                       raise ValueError(
-                          f"invalid port {port_s!r} (looks like a password). "
-                          "Use :5432 after the host. "
-                          "Correct: postgresql://postgres.PROJECT:PASSWORD@HOST:5432/postgres "
-                          "(URL-encode special password chars: @→%40 :→%3A /→%2F)"
+                          f"invalid port {port_s!r}. Use :5432 after the host. "
+                          "If the password has # @ : / ? encode them (%23 %40 %3A %2F %3F)."
                       )
                   port = int(port_s)
-              return user, password, host, port
+              return user, password, host, port, db
 
           if low.startswith(("postgres://", "postgresql://")):
               try:
-                  user, password, host, port = parse_pg_uri(conn)
+                  user, password, host, port, db = parse_pg_uri(conn)
               except ValueError as ex:
                   fail(str(ex))
-              print(f"uri_user={user} uri_host={host} uri_port={port} password_len={len(password)}", file=sys.stderr)
+              print(f"uri_user={user} uri_host={host} uri_port={port} password_len={len(password)}")
               if not password or password.lower() in placeholders or (password.startswith("[") and password.endswith("]")):
                   fail("Replace [YOUR-PASSWORD] with the real Supabase DB password.")
-              if port not in (None, 5432):
-                  print("WARNING: Prefer session pooler port 5432 (not 6543/pgbouncer) for this API.", file=sys.stderr)
+              if port != 5432:
+                  print("WARNING: Prefer session pooler port 5432 (not 6543/pgbouncer) for this API.")
+              safe = (
+                  f"postgresql://{quote(user, safe='')}:{quote(password, safe='')}"
+                  f"@{host}:{port}/{db}"
+              )
+              if safe != conn:
+                  print("normalized_uri=true (password special chars percent-encoded)")
+              conn = safe
           elif low.startswith("host="):
               password = ""
               for part in conn.split(";"):
                   if part.lower().startswith("password="):
                       password = part.split("=", 1)[1]
                       break
-              print(f"ado_password_len={len(password)}", file=sys.stderr)
+              print(f"ado_password_len={len(password)}")
               if not password or password.lower() in placeholders or (password.startswith("[") and password.endswith("]")):
                   fail("Replace placeholder password in ANALYTICS_CONNECTION_STRING.")
           else:
@@ -208,19 +215,20 @@ jobs:
 
           if "[your-password]" in low or "your-password" in low:
               fail("Connection string still contains a password placeholder.")
-          sys.stdout.write(base64.b64encode(conn.encode("utf-8")).decode("ascii"))
+          b64 = base64.b64encode(conn.encode("utf-8")).decode("ascii")
+          open("/tmp/analytics-conn.txt", "w", encoding="utf-8").write(conn)
+          open("/tmp/analytics-conn.b64", "w", encoding="utf-8").write(b64)
+          print(f"canonical_conn_len={len(conn)} conn_b64_len={len(b64)}")
           PY
-          )"
-          echo "conn_b64_len=${#CONN_B64}"
 
-          # Set secrets via Python argv (first '=' only) — URI has no '=' so plain form is safe.
-          export APP RG CONN_B64
+          # Set secrets via Python argv (first '=' only).
+          export APP RG
           python3 - <<'PY'
           import os, subprocess
           app = os.environ["APP"]
           rg = os.environ["RG"]
-          conn = os.environ["ANALYTICS_CONNECTION_STRING"].strip()
-          b64 = os.environ["CONN_B64"]
+          conn = open("/tmp/analytics-conn.txt", encoding="utf-8").read()
+          b64 = open("/tmp/analytics-conn.b64", encoding="utf-8").read()
           cmd = [
               "az", "containerapp", "secret", "set",
               "--name", app,
