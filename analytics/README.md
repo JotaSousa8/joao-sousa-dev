@@ -14,6 +14,8 @@ Stored fields: UTC timestamp, path, referrer, truncated user-agent, **daily visi
 
 ## Run locally
 
+Open `AnalyticsApi.sln` in Visual Studio, or:
+
 ```bash
 cd analytics
 dotnet run --launch-profile http
