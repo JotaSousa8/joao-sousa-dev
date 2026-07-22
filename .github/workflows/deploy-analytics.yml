@@ -18,7 +18,8 @@ env:
   # Override these in repo Variables if you use different names
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-joaosousa-analytics' }}
   AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP || 'ca-joaosousa-analytics' }}
-  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'westeurope' }}
+  # westeurope often blocks new Log Analytics on free/trial; north europe is safer
+  AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'northeurope' }}
 
 jobs:
   build-and-deploy:
@@ -79,10 +80,13 @@ jobs:
           az group create --name "$RG" --location "$LOC" --output none
 
           if ! az containerapp env show --name "$ENV_NAME" --resource-group "$RG" &>/dev/null; then
+            # --logs-destination none avoids creating a Log Analytics workspace
+            # (many trial subscriptions cannot create new LAW in some regions)
             az containerapp env create \
               --name "$ENV_NAME" \
               --resource-group "$RG" \
               --location "$LOC" \
+              --logs-destination none \
               --output none
           fi
 

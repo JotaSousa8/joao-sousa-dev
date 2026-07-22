@@ -44,7 +44,7 @@ Optional **Variables**:
 |----------|---------|
 | `AZURE_RESOURCE_GROUP` | `rg-joaosousa-analytics` |
 | `AZURE_CONTAINER_APP` | `ca-joaosousa-analytics` |
-| `AZURE_LOCATION` | `westeurope` |
+| `AZURE_LOCATION` | `northeurope` |
 
 ### 4. Run the workflow
 - Push a change under `analytics/` to `main`, or  
