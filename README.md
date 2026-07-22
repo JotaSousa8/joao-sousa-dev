@@ -28,4 +28,6 @@ Good fits: **Cloudflare Pages**, **Netlify**, or **GitHub Pages**.
    - Netlify: add a custom domain and use the suggested DNS records.
 4. Enable HTTPS (usually automatic).
 
-Live site (GitHub Pages): https://jotasousa8.github.io/joao-sousa-dev/
+Live site: https://joaosousadev.me/
+
+GitHub Pages fallback: https://jotasousa8.github.io/joao-sousa-dev/
