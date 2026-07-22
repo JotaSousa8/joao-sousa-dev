@@ -831,28 +831,111 @@
               </div>
             </div>
 
-            <h2 class="admin-block__title">Views by path</h2>
-            <div class="admin-table-wrap">
-              <table class="admin-table" id="admin-by-path">
-                <thead>
-                  <tr>
-                    <th>Path</th>
-                    <th>Views</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+            <div class="admin-grid">
+              <div>
+                <h2 class="admin-block__title">Views by path</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-path">
+                    <thead>
+                      <tr>
+                        <th>Path</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 class="admin-block__title">By country</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-country">
+                    <thead>
+                      <tr>
+                        <th>Country</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 class="admin-block__title">By browser</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-browser">
+                    <thead>
+                      <tr>
+                        <th>Browser</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 class="admin-block__title">By OS</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-os">
+                    <thead>
+                      <tr>
+                        <th>OS</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 class="admin-block__title">By language</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-language">
+                    <thead>
+                      <tr>
+                        <th>Language</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 class="admin-block__title">By UTM source</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-utm">
+                    <thead>
+                      <tr>
+                        <th>Source</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
             <h2 class="admin-block__title">Recent events</h2>
+            <p class="admin-form__hint" id="admin-tz-note">
+              Horário: Europe/Lisbon (Portugal). Os eventos são guardados em UTC e
+              convertidos aqui.
+            </p>
             <div class="admin-table-wrap">
-              <table class="admin-table" id="admin-recent">
+              <table class="admin-table admin-table--wide" id="admin-recent">
                 <thead>
                   <tr>
-                    <th>When (UTC)</th>
+                    <th>When (PT)</th>
                     <th>Path</th>
                     <th>Country</th>
+                    <th>Browser</th>
+                    <th>OS</th>
+                    <th>Language</th>
+                    <th>Screen</th>
                     <th>Referrer</th>
+                    <th>UTM</th>
                   </tr>
                 </thead>
                 <tbody></tbody>

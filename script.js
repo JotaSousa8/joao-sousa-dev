@@ -80,11 +80,33 @@ const pathForRoute = (route) => {
   return hash === "#/" ? "/" : hash.replace(/^#/, "") || "/";
 };
 
+const readQueryParams = () => {
+  const params = new URLSearchParams(location.search);
+  const hash = location.hash || "";
+  const qIndex = hash.indexOf("?");
+  if (qIndex >= 0) {
+    const hashParams = new URLSearchParams(hash.slice(qIndex + 1));
+    hashParams.forEach((value, key) => {
+      if (!params.has(key)) params.set(key, value);
+    });
+  }
+  return params;
+};
+
 const trackPageView = (route) => {
   if (!analyticsEndpoint || route === "admin") return;
+  const params = readQueryParams();
   const payload = JSON.stringify({
     path: pathForRoute(route),
     referrer: document.referrer || "",
+    language: navigator.language || "",
+    screenWidth: window.screen?.width || 0,
+    screenHeight: window.screen?.height || 0,
+    utmSource: params.get("utm_source") || "",
+    utmMedium: params.get("utm_medium") || "",
+    utmCampaign: params.get("utm_campaign") || "",
+    utmContent: params.get("utm_content") || "",
+    utmTerm: params.get("utm_term") || "",
   });
   fetch(`${analyticsEndpoint}/api/analytics/pageview`, {
     method: "POST",
@@ -278,6 +300,35 @@ const fillTable = (tableId, rows, columns) => {
   });
 };
 
+const formatLisbonTime = (iso) => {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat("pt-PT", {
+      timeZone: "Europe/Lisbon",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(new Date(iso));
+  } catch {
+    return "—";
+  }
+};
+
+const formatUtm = (row) => {
+  const parts = [
+    row.utmSource && `src=${row.utmSource}`,
+    row.utmMedium && `med=${row.utmMedium}`,
+    row.utmCampaign && `camp=${row.utmCampaign}`,
+    row.utmContent && `cnt=${row.utmContent}`,
+    row.utmTerm && `term=${row.utmTerm}`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "—";
+};
+
 const renderAdminStats = (data) => {
   const set = (id, value) => {
     const el = document.getElementById(id);
@@ -288,12 +339,28 @@ const renderAdminStats = (data) => {
   set("kpi-30", data.viewsLast30Days);
   set("kpi-unique", data.uniqueVisitorsLast30Days);
 
+  const tzNote = document.getElementById("admin-tz-note");
+  if (tzNote) {
+    tzNote.textContent =
+      "Horário: Europe/Lisbon (Portugal). Os eventos são guardados em UTC e convertidos aqui.";
+  }
+
   fillTable("admin-by-path", data.byPath || [], ["path", "views"]);
+  fillTable("admin-by-country", data.byCountry || [], ["country", "views"]);
+  fillTable("admin-by-browser", data.byBrowser || [], ["browser", "views"]);
+  fillTable("admin-by-os", data.byOs || [], ["os", "views"]);
+  fillTable("admin-by-language", data.byLanguage || [], ["language", "views"]);
+  fillTable("admin-by-utm", data.byUtmSource || [], ["source", "views"]);
   fillTable("admin-recent", data.recent || [], [
-    (row) => (row.occurredAtUtc ? new Date(row.occurredAtUtc).toISOString().replace("T", " ").slice(0, 19) : "—"),
+    (row) => formatLisbonTime(row.occurredAtUtc),
     "path",
     "country",
+    "browser",
+    "os",
+    "language",
+    "screen",
     (row) => row.referrer || "—",
+    formatUtm,
   ]);
 
   if (adminStats) adminStats.hidden = false;

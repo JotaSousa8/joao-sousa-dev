@@ -35,7 +35,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"path\": \"/\",\n  \"referrer\": \"https://www.linkedin.com/\"\n}"
+          "raw": "{\n  \"path\": \"/\",\n  \"referrer\": \"https://www.linkedin.com/\",\n  \"language\": \"pt-PT\",\n  \"screenWidth\": 1920,\n  \"screenHeight\": 1080,\n  \"utmSource\": \"linkedin\",\n  \"utmMedium\": \"social\",\n  \"utmCampaign\": \"profile\",\n  \"utmContent\": \"\",\n  \"utmTerm\": \"\"\n}"
         },
         "url": "{{baseUrl}}/api/analytics/pageview"
       }

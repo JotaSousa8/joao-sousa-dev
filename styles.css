@@ -1117,6 +1117,12 @@ strong {
   color: var(--text-strong);
 }
 
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1.25rem;
+}
+
 .admin-table-wrap {
   overflow-x: auto;
   margin-bottom: 1.75rem;
@@ -1128,6 +1134,16 @@ strong {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
+}
+
+.admin-table--wide {
+  font-size: 0.82rem;
+  min-width: 56rem;
+}
+
+.admin-table--wide th,
+.admin-table--wide td {
+  white-space: nowrap;
 }
 
 .admin-table th,
@@ -1151,6 +1167,10 @@ strong {
 @media (max-width: 720px) {
   .admin-kpis {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
   }
 }
 
