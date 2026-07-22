@@ -82,7 +82,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"sql\": \"SELECT Id, OccurredAtUtc, Path, ClientIp, Country FROM PageViews ORDER BY OccurredAtUtc DESC LIMIT 50\"\n}"
+          "raw": "{\n  \"sql\": \"SELECT id, occurred_at_utc, path, client_ip, country FROM page_views ORDER BY occurred_at_utc DESC LIMIT 50\"\n}"
         },
         "url": "{{baseUrl}}/api/analytics/query"
       }

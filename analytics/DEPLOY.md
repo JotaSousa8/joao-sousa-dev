@@ -2,7 +2,23 @@
 
 Frontend stays on **GitHub Pages**. Only the `analytics/` API runs on Azure.
 
-Deploy today uses **Azure CLI** in GitHub Actions. Terraform files live under `infra/` for later (commented out in the workflow).
+Deploy today uses **Azure CLI** in GitHub Actions. Data is stored in **Supabase Postgres** (free tier) so revisões do Container App não apagam visitas. Terraform files live under `infra/` for later (commented out in the workflow).
+
+## Supabase (database)
+
+1. Create a free project at [supabase.com](https://supabase.com)
+2. **Project Settings → Database → Connection string → URI** (use the **Session** pooler or direct connection)
+3. Copy the URI (`postgresql://postgres....`) into GitHub secret `ANALYTICS_CONNECTION_STRING`
+4. First API boot runs `EnsureCreated` and creates table `page_views`
+5. Open **Table Editor** / **SQL Editor** in Supabase to browse and query
+
+Locally, put the same URI in user-secrets or `appsettings.Development.json`:
+
+```bash
+cd analytics
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:Analytics" "postgresql://..."
+```
 
 ## One-time Azure setup
 
@@ -39,6 +55,7 @@ Repo → **Settings** → **Secrets and variables** → **Actions**:
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID |
 | `ANALYTICS_API_KEY` | Long random string (summary auth) |
 | `ANALYTICS_IP_SALT` | Long random string (visitor hashing) |
+| `ANALYTICS_CONNECTION_STRING` | Supabase Postgres URI (Project Settings → Database) |
 
 Optional **Variables**:
 

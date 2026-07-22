@@ -33,6 +33,12 @@ variable "analytics_ip_salt" {
   sensitive   = true
 }
 
+variable "analytics_connection_string" {
+  type        = string
+  description = "Supabase / Postgres connection string."
+  sensitive   = true
+}
+
 variable "cpu" {
   type        = number
   description = "vCPU for the container."

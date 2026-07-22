@@ -10,12 +10,15 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var dbPath = builder.Configuration["Analytics:DbPath"]
-    ?? Path.Combine(builder.Environment.ContentRootPath, "data", "analytics.db");
-Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+var connectionString = ResolveConnectionString(builder.Configuration);
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Missing Postgres connection string. Set ConnectionStrings:Analytics (or Analytics:ConnectionString / DATABASE_URL).");
+}
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<GeoIpService>(client =>
@@ -340,24 +343,57 @@ app.MapGet("/api/analytics/schema", async (
     var tables = new List<object>();
     await using (var listCmd = connection.CreateCommand())
     {
-        listCmd.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;";
+        listCmd.CommandText = """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+            ORDER BY table_name;
+            """;
         await using var reader = await listCmd.ExecuteReaderAsync();
+        var tableNames = new List<string>();
         while (await reader.ReadAsync())
         {
-            var tableName = reader.GetString(0);
+            tableNames.Add(reader.GetString(0));
+        }
+
+        await reader.CloseAsync();
+
+        foreach (var tableName in tableNames)
+        {
             var columns = new List<object>();
             await using (var colCmd = connection.CreateCommand())
             {
-                colCmd.CommandText = $"PRAGMA table_info('{tableName.Replace("'", "''")}');";
+                colCmd.CommandText = """
+                    SELECT column_name, data_type, is_nullable,
+                           CASE WHEN EXISTS (
+                             SELECT 1
+                             FROM information_schema.table_constraints tc
+                             JOIN information_schema.key_column_usage kcu
+                               ON tc.constraint_name = kcu.constraint_name
+                              AND tc.table_schema = kcu.table_schema
+                             WHERE tc.table_schema = 'public'
+                               AND tc.table_name = @table
+                               AND tc.constraint_type = 'PRIMARY KEY'
+                               AND kcu.column_name = c.column_name
+                           ) THEN TRUE ELSE FALSE END AS is_pk
+                    FROM information_schema.columns c
+                    WHERE table_schema = 'public' AND table_name = @table
+                    ORDER BY ordinal_position;
+                    """;
+                var p = colCmd.CreateParameter();
+                p.ParameterName = "table";
+                p.Value = tableName;
+                colCmd.Parameters.Add(p);
+
                 await using var colReader = await colCmd.ExecuteReaderAsync();
                 while (await colReader.ReadAsync())
                 {
                     columns.Add(new
                     {
-                        name = colReader.GetString(1),
-                        type = colReader.IsDBNull(2) ? "" : colReader.GetString(2),
-                        notNull = colReader.GetInt64(3) == 1,
-                        primaryKey = colReader.GetInt64(5) == 1
+                        name = colReader.GetString(0),
+                        type = colReader.IsDBNull(1) ? "" : colReader.GetString(1),
+                        notNull = string.Equals(colReader.GetString(2), "NO", StringComparison.OrdinalIgnoreCase),
+                        primaryKey = !colReader.IsDBNull(3) && colReader.GetBoolean(3)
                     });
                 }
             }
@@ -438,6 +474,47 @@ app.MapPost("/api/analytics/query", async (
 .RequireCors("Site");
 
 app.Run();
+
+static string ResolveConnectionString(IConfiguration config)
+{
+    var raw =
+        config.GetConnectionString("Analytics")
+        ?? config["Analytics:ConnectionString"]
+        ?? config["DATABASE_URL"]
+        ?? "";
+
+    raw = raw.Trim();
+    if (raw.Length == 0)
+    {
+        return raw;
+    }
+
+    // Supabase URI → Npgsql key=value form when needed
+    if (raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+        || raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(raw);
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var user = Uri.UnescapeDataString(userInfo[0]);
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        var database = uri.AbsolutePath.Trim('/');
+        if (string.IsNullOrWhiteSpace(database))
+        {
+            database = "postgres";
+        }
+
+        return $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+    }
+
+    if (!raw.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase)
+        && !raw.Contains("Ssl Mode", StringComparison.OrdinalIgnoreCase)
+        && !raw.Contains("sslmode", StringComparison.OrdinalIgnoreCase))
+    {
+        raw += raw.EndsWith(';') ? "SSL Mode=Require;Trust Server Certificate=true" : ";SSL Mode=Require;Trust Server Certificate=true";
+    }
+
+    return raw;
+}
 
 static bool TryAuthorize(HttpRequest httpRequest, IConfiguration config, out IResult? error)
 {

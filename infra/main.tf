@@ -30,6 +30,11 @@ resource "azurerm_container_app" "analytics" {
     value = var.analytics_ip_salt
   }
 
+  secret {
+    name  = "analytics-connection-string"
+    value = var.analytics_connection_string
+  }
+
   template {
     min_replicas = var.min_replicas
     max_replicas = var.max_replicas
@@ -51,8 +56,8 @@ resource "azurerm_container_app" "analytics" {
       }
 
       env {
-        name  = "Analytics__DbPath"
-        value = "/data/analytics.db"
+        name        = "ConnectionStrings__Analytics"
+        secret_name = "analytics-connection-string"
       }
 
       env {

@@ -991,8 +991,8 @@
 
             <h2 class="admin-block__title">SQL console (read-only)</h2>
             <p class="admin-form__hint">
-              Corre <code>SELECT</code> / <code>WITH … SELECT</code> na SQLite. Máx. 200
-              linhas. Tabela principal: <code>PageViews</code>.
+              Corre <code>SELECT</code> / <code>WITH … SELECT</code> no Postgres
+              (Supabase). Máx. 200 linhas. Tabela: <code>page_views</code>.
             </p>
             <div class="admin-schema" id="admin-schema"></div>
             <form class="admin-sql" id="admin-sql-form">
@@ -1002,9 +1002,9 @@
                 class="admin-sql__input"
                 rows="5"
                 spellcheck="false"
-              >SELECT Id, OccurredAtUtc, Path, ClientIp, Country, Browser, Os
-FROM PageViews
-ORDER BY OccurredAtUtc DESC
+              >SELECT id, occurred_at_utc, path, client_ip, country, browser, os
+FROM page_views
+ORDER BY occurred_at_utc DESC
 LIMIT 50;</textarea>
               <div class="admin-range__actions">
                 <button class="btn btn--primary" type="submit">Run query</button>

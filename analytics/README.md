@@ -1,6 +1,6 @@
-# Analytics API — local visits tracker for joaosousadev.me
+# Analytics API — visits tracker for joaosousadev.me
 
-Minimal ASP.NET Core (.NET 10) API that stores anonymised page views in SQLite.
+Minimal ASP.NET Core (.NET 10) API. Page views are stored in **Supabase Postgres** (persistent, free tier).
 
 ## Endpoints
 
@@ -8,28 +8,27 @@ Minimal ASP.NET Core (.NET 10) API that stores anonymised page views in SQLite.
 |--------|------|------|---------|
 | `POST` | `/api/analytics/pageview` | none (CORS + rate limit) | Record a visit |
 | `GET` | `/api/analytics/summary` | header `X-Api-Key` | Totals, paths, recent events |
+| `GET` | `/api/analytics/schema` | header `X-Api-Key` | Tables / columns |
+| `POST` | `/api/analytics/query` | header `X-Api-Key` | Read-only SQL |
 | `GET` | `/health` | none | Liveness |
 
-Stored fields: UTC timestamp, path, referrer, truncated user-agent, **daily visitor hash** (not raw IP), optional country header.
+Main table: `page_views`.
 
 ## Run locally
 
-Open `AnalyticsApi.sln` in Visual Studio, or:
+1. Create a free [Supabase](https://supabase.com) project and copy the Database URI.
+2. Open `AnalyticsApi.sln` in Visual Studio, or set the connection string:
 
 ```bash
 cd analytics
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:Analytics" "postgresql://postgres....@....supabase.co:5432/postgres"
 dotnet run --launch-profile http
 ```
 
 Default URL: `http://localhost:5095`
 
-In the static site, local tracking auto-targets `http://localhost:5095` when you open the site on localhost. Optionally override with:
-
-```html
-<meta name="analytics-endpoint" content="http://localhost:5095" />
-```
-
-For production, set that meta to your deployed API URL (until then, tracking stays off on joaosousadev.me).
+On localhost the static site auto-targets `http://localhost:5095`. Production uses the `analytics-endpoint` meta tag.
 
 Summary example:
 
@@ -37,21 +36,15 @@ Summary example:
 curl -H "X-Api-Key: local-dev-key" http://localhost:5095/api/analytics/summary
 ```
 
-## Azure costs (realistic for a portfolio)
+## Azure / GitHub
 
-| Option | Approx. cost | Notes |
-|--------|----------------|-------|
-| **Azure Container Apps** (consumption) | often **€0–2/mês** at low traffic | Pay per use; good default |
-| **Azure Functions** Consumption | often **€0–1/mês** | Rewrite as functions if you prefer |
-| **App Service Free F1** | **€0** | Sleeps, limited; OK for experiments only |
-| **App Service B1** | ~**€10–15/mês** | Always-on, simpler |
-| **SQLite on disk** | **€0** extra | Fine for low volume; use durable mount or move to Table Storage later |
-| **Azure SQL** | usually **too expensive** for this | Skip for now |
+See [DEPLOY.md](DEPLOY.md). Required secret: `ANALYTICS_CONNECTION_STRING` (Supabase URI).
 
-**Recommendation:** Container Apps + SQLite (or free-tier Postgres elsewhere) keeps cost near zero for personal traffic. Set strong `Analytics__ApiKey` and `Analytics__IpSalt` as app settings. Never commit production secrets.
+## Cost
 
-GitHub Pages stays free for the frontend; only the API is billed.
+| Piece | Cost |
+|--------|------|
+| Supabase free tier | €0 (within free quotas) |
+| Azure Container Apps `minReplicas=0` | usually €0–2/month idle |
 
-## Deploy from this repo
-
-See **[DEPLOY.md](./DEPLOY.md)** — GitHub Actions builds `analytics/` and deploys to Azure Container Apps. Same repo; Pages unchanged.
+Visits survive container restarts/deploys because Postgres lives in Supabase, not on the container disk.
