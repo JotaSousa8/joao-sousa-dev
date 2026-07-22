@@ -1,0 +1,57 @@
+{
+  "info": {
+    "name": "João Sousa — Analytics API (Production)",
+    "description": "Production analytics API for joaosousadev.me (Azure Container Apps).\n\nSet collection variable `apiKey` to your ANALYTICS_API_KEY before calling Summary.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://ca-joaosousa-analytics.icysky-6de7d3a3.northeurope.azurecontainerapps.io"
+    },
+    {
+      "key": "apiKey",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Record pageview",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"path\": \"/\",\n  \"referrer\": \"https://www.linkedin.com/\"\n}"
+        },
+        "url": "{{baseUrl}}/api/analytics/pageview"
+      }
+    },
+    {
+      "name": "Summary (stats)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Api-Key",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/analytics/summary"
+      }
+    }
+  ]
+}
