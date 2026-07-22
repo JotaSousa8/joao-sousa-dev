@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace AnalyticsApi.Services;
@@ -17,6 +18,9 @@ public sealed record GeoLocation(
 
 public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<GeoIpService> logger)
 {
+    // v2: prefer ip-api (often better city match for PT ISP ranges than ipwho.is).
+    private static readonly Regex AsnRegex = new(@"^AS(?<n>\d+)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public async Task<GeoLocation?> ResolveAsync(IPAddress? ip, CancellationToken cancellationToken = default)
     {
         if (ip is null || IPAddress.IsLoopback(ip) || IsPrivate(ip))
@@ -29,12 +33,62 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
             ip = ip.MapToIPv4();
         }
 
-        var key = $"geo-loc:{ip}";
+        var key = $"geo-loc-v2:{ip}";
         if (cache.TryGetValue(key, out GeoLocation? cached))
         {
             return cached;
         }
 
+        var location = await TryIpApiAsync(ip, cancellationToken)
+            ?? await TryIpWhoAsync(ip, cancellationToken);
+
+        if (location is not null)
+        {
+            cache.Set(key, location, TimeSpan.FromHours(12));
+        }
+
+        return location;
+    }
+
+    private async Task<GeoLocation?> TryIpApiAsync(IPAddress ip, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Free tier is HTTP-only (no key). Fine for server-side lookups.
+            var url =
+                $"http://ip-api.com/json/{ip}?fields=status,message,countryCode,regionName,city,zip,lat,lon,isp,org,as";
+            using var response = await http.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<IpApiResponse>(cancellationToken);
+            if (payload is not { Status: "success" })
+            {
+                return null;
+            }
+
+            return new GeoLocation(
+                NormalizeCountry(payload.CountryCode),
+                TruncateOrNull(payload.RegionName, 80),
+                TruncateOrNull(payload.City, 80),
+                TruncateOrNull(payload.Zip, 24),
+                payload.Lat,
+                payload.Lon,
+                ParseAsn(payload.As),
+                TruncateOrNull(payload.Org, 120),
+                TruncateOrNull(payload.Isp, 120));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            logger.LogDebug(ex, "ip-api GeoIP lookup failed for {Ip}", ip);
+            return null;
+        }
+    }
+
+    private async Task<GeoLocation?> TryIpWhoAsync(IPAddress ip, CancellationToken cancellationToken)
+    {
         try
         {
             using var response = await http.GetAsync($"https://ipwho.is/{ip}", cancellationToken);
@@ -49,47 +103,48 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
                 return null;
             }
 
-            var country = string.IsNullOrWhiteSpace(payload.CountryCode)
-                ? null
-                : payload.CountryCode.Trim().ToUpperInvariant();
-            var region = string.IsNullOrWhiteSpace(payload.Region)
-                ? null
-                : Truncate(payload.Region.Trim(), 80);
-            var city = string.IsNullOrWhiteSpace(payload.City)
-                ? null
-                : Truncate(payload.City.Trim(), 80);
-            var postal = string.IsNullOrWhiteSpace(payload.Postal)
-                ? null
-                : Truncate(payload.Postal.Trim(), 24);
-            var org = string.IsNullOrWhiteSpace(payload.Connection?.Org)
-                ? null
-                : Truncate(payload.Connection.Org.Trim(), 120);
-            var isp = string.IsNullOrWhiteSpace(payload.Connection?.Isp)
-                ? null
-                : Truncate(payload.Connection.Isp.Trim(), 120);
-
-            var location = new GeoLocation(
-                country,
-                region,
-                city,
-                postal,
+            return new GeoLocation(
+                NormalizeCountry(payload.CountryCode),
+                TruncateOrNull(payload.Region, 80),
+                TruncateOrNull(payload.City, 80),
+                TruncateOrNull(payload.Postal, 24),
                 payload.Latitude,
                 payload.Longitude,
                 payload.Connection?.Asn,
-                org,
-                isp);
-            cache.Set(key, location, TimeSpan.FromHours(12));
-            return location;
+                TruncateOrNull(payload.Connection?.Org, 120),
+                TruncateOrNull(payload.Connection?.Isp, 120));
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
-            logger.LogDebug(ex, "GeoIP lookup failed for {Ip}", ip);
+            logger.LogDebug(ex, "ipwho.is GeoIP lookup failed for {Ip}", ip);
             return null;
         }
     }
 
-    private static string Truncate(string value, int max) =>
-        value.Length <= max ? value : value[..max];
+    private static string? NormalizeCountry(string? code) =>
+        string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpperInvariant();
+
+    private static string? TruncateOrNull(string? value, int max)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        value = value.Trim();
+        return value.Length <= max ? value : value[..max];
+    }
+
+    private static int? ParseAsn(string? asField)
+    {
+        if (string.IsNullOrWhiteSpace(asField))
+        {
+            return null;
+        }
+
+        var match = AsnRegex.Match(asField.Trim());
+        return match.Success && int.TryParse(match.Groups["n"].Value, out var n) ? n : null;
+    }
 
     private static bool IsPrivate(IPAddress ip)
     {
@@ -104,6 +159,18 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
             || (bytes[0] == 192 && bytes[1] == 168)
             || (bytes[0] == 169 && bytes[1] == 254);
     }
+
+    private sealed record IpApiResponse(
+        [property: JsonPropertyName("status")] string? Status,
+        [property: JsonPropertyName("countryCode")] string? CountryCode,
+        [property: JsonPropertyName("regionName")] string? RegionName,
+        [property: JsonPropertyName("city")] string? City,
+        [property: JsonPropertyName("zip")] string? Zip,
+        [property: JsonPropertyName("lat")] double? Lat,
+        [property: JsonPropertyName("lon")] double? Lon,
+        [property: JsonPropertyName("isp")] string? Isp,
+        [property: JsonPropertyName("org")] string? Org,
+        [property: JsonPropertyName("as")] string? As);
 
     private sealed record IpWhoResponse(
         [property: JsonPropertyName("success")] bool Success,
