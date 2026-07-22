@@ -271,9 +271,7 @@ const adminClear = document.getElementById("admin-clear");
 const adminHint = document.getElementById("admin-endpoint-hint");
 
 if (adminHint) {
-  adminHint.textContent = analyticsEndpoint
-    ? `API: ${analyticsEndpoint}`
-    : "No analytics endpoint configured. Set meta analytics-endpoint or run API on localhost:5095.";
+  adminHint.hidden = true;
 }
 
 if (adminKeyInput) {
