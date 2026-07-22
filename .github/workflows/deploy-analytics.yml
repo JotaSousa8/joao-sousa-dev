@@ -136,8 +136,8 @@ jobs:
           # Heredoc body must stay indented for YAML; Actions strips the common indent.
           CONN_B64="$(python3 - <<'PY'
           import os, sys, base64
-          from urllib.parse import urlparse, unquote
-          conn = (os.environ.get("ANALYTICS_CONNECTION_STRING") or "").strip()
+          from urllib.parse import unquote
+          conn = (os.environ.get("ANALYTICS_CONNECTION_STRING") or "").strip().strip('"').strip("'")
           key = os.environ.get("ANALYTICS_API_KEY") or ""
           salt = os.environ.get("ANALYTICS_IP_SALT") or ""
           print(f"api_key_len={len(key)} ip_salt_len={len(salt)} conn_len={len(conn)}", file=sys.stderr)
@@ -145,36 +145,69 @@ jobs:
               print("ERROR: ANALYTICS_API_KEY / ANALYTICS_IP_SALT / ANALYTICS_CONNECTION_STRING must be set.", file=sys.stderr)
               sys.exit(1)
           low = conn.lower()
-          if not (low.startswith(("postgres://", "postgresql://")) or low.startswith("host=")):
-              print("ERROR: ANALYTICS_CONNECTION_STRING must be postgresql:// URI or Host=... string.", file=sys.stderr)
+          placeholders = {"your-password", "[your-password]", "password", "changeme", "yoursecret"}
+
+          def fail(msg):
+              print(f"ERROR: {msg}", file=sys.stderr)
               sys.exit(1)
-          placeholders = {
-              "your-password", "[your-password]", "password", "changeme", "yoursecret",
-          }
-          password = ""
+
+          def parse_pg_uri(uri: str):
+              if "://" not in uri:
+                  raise ValueError("missing ://")
+              _, rest = uri.split("://", 1)
+              if "/" in rest:
+                  rest, _path = rest.split("/", 1)
+              if "@" not in rest:
+                  raise ValueError(
+                      "missing USER:PASSWORD@HOST — expected "
+                      "postgresql://postgres.PROJECT:PASSWORD@aws-....pooler.supabase.com:5432/postgres"
+                  )
+              userinfo, hostport = rest.rsplit("@", 1)
+              if ":" not in userinfo:
+                  raise ValueError(
+                      "missing :PASSWORD before @HOST. "
+                      "You likely put the DB password where the port goes. "
+                      "Correct: ...://postgres.PROJECT:YOUR_PASSWORD@HOST:5432/postgres"
+                  )
+              user, password = userinfo.split(":", 1)
+              user, password = unquote(user), unquote(password)
+              host, port = hostport, None
+              if ":" in hostport and not hostport.startswith("["):
+                  host, port_s = hostport.rsplit(":", 1)
+                  if not port_s.isdigit():
+                      raise ValueError(
+                          f"invalid port {port_s!r} (looks like a password). "
+                          "Use :5432 after the host. "
+                          "Correct: postgresql://postgres.PROJECT:PASSWORD@HOST:5432/postgres "
+                          "(URL-encode special password chars: @→%40 :→%3A /→%2F)"
+                      )
+                  port = int(port_s)
+              return user, password, host, port
+
           if low.startswith(("postgres://", "postgresql://")):
-              parsed = urlparse(conn)
-              password = unquote(parsed.password or "")
-              print(f"uri_host={parsed.hostname} uri_port={parsed.port} password_len={len(password)}", file=sys.stderr)
+              try:
+                  user, password, host, port = parse_pg_uri(conn)
+              except ValueError as ex:
+                  fail(str(ex))
+              print(f"uri_user={user} uri_host={host} uri_port={port} password_len={len(password)}", file=sys.stderr)
               if not password or password.lower() in placeholders or (password.startswith("[") and password.endswith("]")):
-                  print("ERROR: Replace [YOUR-PASSWORD] in ANALYTICS_CONNECTION_STRING with the real Supabase DB password.", file=sys.stderr)
-                  sys.exit(1)
-              if parsed.port not in (None, 5432):
+                  fail("Replace [YOUR-PASSWORD] with the real Supabase DB password.")
+              if port not in (None, 5432):
                   print("WARNING: Prefer session pooler port 5432 (not 6543/pgbouncer) for this API.", file=sys.stderr)
-          elif "password=" in low:
-              # Host=...;Password=...
+          elif low.startswith("host="):
+              password = ""
               for part in conn.split(";"):
                   if part.lower().startswith("password="):
                       password = part.split("=", 1)[1]
                       break
               print(f"ado_password_len={len(password)}", file=sys.stderr)
               if not password or password.lower() in placeholders or (password.startswith("[") and password.endswith("]")):
-                  print("ERROR: Replace placeholder password in ANALYTICS_CONNECTION_STRING.", file=sys.stderr)
-                  sys.exit(1)
-          # Exact length trap from the Supabase template with [YOUR-PASSWORD] still present.
+                  fail("Replace placeholder password in ANALYTICS_CONNECTION_STRING.")
+          else:
+              fail("ANALYTICS_CONNECTION_STRING must be postgresql:// URI or Host=... string.")
+
           if "[your-password]" in low or "your-password" in low:
-              print("ERROR: Connection string still contains a password placeholder.", file=sys.stderr)
-              sys.exit(1)
+              fail("Connection string still contains a password placeholder.")
           sys.stdout.write(base64.b64encode(conn.encode("utf-8")).decode("ascii"))
           PY
           )"

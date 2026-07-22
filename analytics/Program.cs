@@ -534,27 +534,65 @@ static (string Value, string Source) ResolveConnectionStringDetailed(IConfigurat
 
 static string NormalizeConnectionString(string raw)
 {
-    raw = raw.Trim().Trim('"');
+    raw = raw.Trim().Trim('"').Trim('\'');
 
-    // Supabase URI → Npgsql key=value form when needed
+    // Supabase URI → Npgsql key=value (manual parse so passwords with '.' don't break ports)
     if (raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
         || raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
     {
-        if (!Uri.TryCreate(raw, UriKind.Absolute, out var uri))
+        var schemeSplit = raw.Split(["://"], 2, StringSplitOptions.None);
+        if (schemeSplit.Length != 2)
         {
-            throw new InvalidOperationException("Connection string looks like a Postgres URI but could not be parsed. URL-encode special characters in the password.");
+            throw new InvalidOperationException("Invalid Postgres URI.");
         }
 
-        var userInfo = uri.UserInfo.Split(':', 2);
-        var user = Uri.UnescapeDataString(userInfo[0]);
-        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
-        var database = uri.AbsolutePath.Trim('/');
+        var rest = schemeSplit[1];
+        var slash = rest.IndexOf('/');
+        var netloc = slash >= 0 ? rest[..slash] : rest;
+        var database = slash >= 0 ? rest[(slash + 1)..] : "postgres";
         if (string.IsNullOrWhiteSpace(database))
         {
             database = "postgres";
         }
 
-        return $"Host={uri.Host};Port={(uri.Port > 0 ? uri.Port : 5432)};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        var at = netloc.LastIndexOf('@');
+        if (at < 0)
+        {
+            throw new InvalidOperationException(
+                "Postgres URI missing USER:PASSWORD@HOST. Expected postgresql://postgres.PROJECT:PASSWORD@HOST:5432/postgres");
+        }
+
+        var userInfo = netloc[..at];
+        var hostPort = netloc[(at + 1)..];
+        var colon = userInfo.IndexOf(':');
+        if (colon < 0)
+        {
+            throw new InvalidOperationException(
+                "Postgres URI missing :PASSWORD before @HOST (password was probably put in the port field).");
+        }
+
+        var user = Uri.UnescapeDataString(userInfo[..colon]);
+        var password = Uri.UnescapeDataString(userInfo[(colon + 1)..]);
+
+        string host;
+        var port = 5432;
+        var portColon = hostPort.LastIndexOf(':');
+        if (portColon > 0)
+        {
+            host = hostPort[..portColon];
+            var portText = hostPort[(portColon + 1)..];
+            if (!int.TryParse(portText, out port))
+            {
+                throw new InvalidOperationException(
+                    $"Invalid port '{portText}' in Postgres URI — use :5432 after the host.");
+            }
+        }
+        else
+        {
+            host = hostPort;
+        }
+
+        return $"Host={host};Port={port};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
     }
 
     if (!raw.Contains("SSL Mode", StringComparison.OrdinalIgnoreCase)
