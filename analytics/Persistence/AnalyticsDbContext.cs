@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace AnalyticsApi.Data;
+namespace AnalyticsApi.Persistence;
 
 public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options)
     : DbContext(options)
