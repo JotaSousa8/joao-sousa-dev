@@ -387,7 +387,6 @@ const renderAdminStats = (data) => {
     (row) => row.region || "—",
     (row) => row.city || "—",
     (row) => row.isp || row.org || "—",
-    (row) => (row.asn != null ? String(row.asn) : "—"),
     (row) => formatLisbonTime(row.lastSeenUtc),
   ]);
   fillTable("admin-by-path", data.byPath || [], ["path", "views"]);
@@ -409,10 +408,7 @@ const renderAdminStats = (data) => {
     (row) => row.country || "—",
     (row) => row.region || "—",
     (row) => row.city || "—",
-    (row) => {
-      const parts = [row.isp || row.org, row.asn != null ? `AS${row.asn}` : null].filter(Boolean);
-      return parts.length ? parts.join(" · ") : "—";
-    },
+    (row) => row.isp || row.org || "—",
     (row) => [row.browser, row.os, row.screen].filter(Boolean).join(" · ") || "—",
     (row) => {
       const utm = formatUtm(row);
@@ -481,7 +477,7 @@ if (adminForm && adminKeyInput) {
       return;
     }
     if (!document.getElementById("admin-from")?.value) {
-      setRangePreset(7);
+      setRangePreset(1);
     }
     loadAdminStats(key).catch(() => {
       if (adminError) {
