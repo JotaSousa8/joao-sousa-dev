@@ -1245,14 +1245,6 @@ strong {
   font-size: 0.84rem;
 }
 
-.admin-table th,
-.admin-table td {
-  padding: 0.65rem 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
 .admin-table th {
   background: var(--bg-soft);
   color: var(--text-strong);
