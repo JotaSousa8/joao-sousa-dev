@@ -509,3 +509,151 @@ if (adminClear && adminKeyInput) {
   });
 }
 
+const adminSqlForm = document.getElementById("admin-sql-form");
+const adminSqlInput = document.getElementById("admin-sql");
+const adminSqlHint = document.getElementById("admin-sql-hint");
+const adminSqlError = document.getElementById("admin-sql-error");
+const adminSqlSchemaBtn = document.getElementById("admin-sql-schema");
+const adminSchema = document.getElementById("admin-schema");
+
+const requireAdminKey = () => {
+  const key = adminKeyInput?.value.trim() || "";
+  if (!key) {
+    if (adminError) {
+      adminError.hidden = false;
+      adminError.textContent = "Enter the API key.";
+    }
+    return null;
+  }
+  return key;
+};
+
+const renderSqlResult = (data) => {
+  const table = document.getElementById("admin-sql-result");
+  if (!table) return;
+  const thead = table.querySelector("thead");
+  const tbody = table.querySelector("tbody");
+  if (!thead || !tbody) return;
+
+  thead.replaceChildren();
+  tbody.replaceChildren();
+
+  const headerRow = document.createElement("tr");
+  (data.columns || []).forEach((name) => {
+    const th = document.createElement("th");
+    th.textContent = name;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+
+  (data.rows || []).forEach((row) => {
+    const tr = document.createElement("tr");
+    (data.columns || []).forEach((name) => {
+      const td = document.createElement("td");
+      const value = row[name];
+      td.textContent = value == null || value === "" ? "—" : String(value);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  if (adminSqlHint) {
+    adminSqlHint.textContent = data.truncated
+      ? `Showing first ${data.rowCount} rows (truncated).`
+      : `${data.rowCount ?? 0} row(s).`;
+  }
+};
+
+const runAdminSql = async () => {
+  if (!analyticsEndpoint) {
+    if (adminSqlError) {
+      adminSqlError.hidden = false;
+      adminSqlError.textContent = "Analytics API endpoint is not configured.";
+    }
+    return;
+  }
+
+  const key = requireAdminKey();
+  if (!key) return;
+
+  if (adminSqlError) adminSqlError.hidden = true;
+
+  const response = await fetch(`${analyticsEndpoint}/api/analytics/query`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Api-Key": key,
+    },
+    body: JSON.stringify({ sql: adminSqlInput?.value || "" }),
+    mode: "cors",
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (adminSqlError) {
+      adminSqlError.hidden = false;
+      adminSqlError.textContent =
+        response.status === 401
+          ? "Invalid API key."
+          : payload.error || `Query failed (${response.status}).`;
+    }
+    return;
+  }
+
+  localStorage.setItem(ADMIN_KEY_STORAGE, key);
+  if (adminClear) adminClear.hidden = false;
+  if (adminStats) adminStats.hidden = false;
+  renderSqlResult(payload);
+};
+
+const loadAdminSchema = async () => {
+  if (!analyticsEndpoint) return;
+  const key = requireAdminKey();
+  if (!key) return;
+
+  const response = await fetch(`${analyticsEndpoint}/api/analytics/schema`, {
+    headers: { "X-Api-Key": key },
+    mode: "cors",
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (adminSqlError) {
+      adminSqlError.hidden = false;
+      adminSqlError.textContent =
+        response.status === 401
+          ? "Invalid API key."
+          : payload.error || `Could not load schema (${response.status}).`;
+    }
+    return;
+  }
+
+  if (!adminSchema) return;
+  adminSchema.replaceChildren();
+  (payload.tables || []).forEach((table) => {
+    const p = document.createElement("p");
+    const cols = (table.columns || [])
+      .map((c) => `${c.name}${c.primaryKey ? " PK" : ""}`)
+      .join(", ");
+    p.innerHTML = `<strong>${table.name}</strong>: <code>${cols}</code>`;
+    adminSchema.appendChild(p);
+  });
+};
+
+if (adminSqlForm) {
+  adminSqlForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    runAdminSql().catch(() => {
+      if (adminSqlError) {
+        adminSqlError.hidden = false;
+        adminSqlError.textContent = "Network error talking to the analytics API.";
+      }
+    });
+  });
+}
+
+if (adminSqlSchemaBtn) {
+  adminSqlSchemaBtn.addEventListener("click", () => {
+    loadAdminSchema().catch(() => {});
+  });
+}
+

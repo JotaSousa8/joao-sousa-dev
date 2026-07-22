@@ -324,7 +324,200 @@ app.MapGet("/api/analytics/summary", async (
 })
 .RequireCors("Site");
 
+app.MapGet("/api/analytics/schema", async (
+    HttpRequest httpRequest,
+    AnalyticsDbContext db,
+    IConfiguration config) =>
+{
+    if (!TryAuthorize(httpRequest, config, out var authError))
+    {
+        return authError!;
+    }
+
+    var connection = db.Database.GetDbConnection();
+    await connection.OpenAsync();
+
+    var tables = new List<object>();
+    await using (var listCmd = connection.CreateCommand())
+    {
+        listCmd.CommandText = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name;";
+        await using var reader = await listCmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var tableName = reader.GetString(0);
+            var columns = new List<object>();
+            await using (var colCmd = connection.CreateCommand())
+            {
+                colCmd.CommandText = $"PRAGMA table_info('{tableName.Replace("'", "''")}');";
+                await using var colReader = await colCmd.ExecuteReaderAsync();
+                while (await colReader.ReadAsync())
+                {
+                    columns.Add(new
+                    {
+                        name = colReader.GetString(1),
+                        type = colReader.IsDBNull(2) ? "" : colReader.GetString(2),
+                        notNull = colReader.GetInt64(3) == 1,
+                        primaryKey = colReader.GetInt64(5) == 1
+                    });
+                }
+            }
+
+            tables.Add(new { name = tableName, columns });
+        }
+    }
+
+    return Results.Ok(new { tables });
+})
+.RequireCors("Site");
+
+app.MapPost("/api/analytics/query", async (
+    SqlQueryRequest request,
+    HttpRequest httpRequest,
+    AnalyticsDbContext db,
+    IConfiguration config,
+    CancellationToken cancellationToken) =>
+{
+    if (!TryAuthorize(httpRequest, config, out var authError))
+    {
+        return authError!;
+    }
+
+    var sql = request.Sql?.Trim() ?? "";
+    if (string.IsNullOrWhiteSpace(sql))
+    {
+        return Results.BadRequest(new { error = "SQL is required." });
+    }
+
+    if (!IsReadOnlySelect(sql))
+    {
+        return Results.BadRequest(new { error = "Only a single read-only SELECT (or WITH … SELECT) is allowed." });
+    }
+
+    var maxRows = 200;
+    var connection = db.Database.GetDbConnection();
+    await connection.OpenAsync(cancellationToken);
+
+    try
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = 5;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        var columns = Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToList();
+        var rows = new List<Dictionary<string, object?>>();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            if (rows.Count >= maxRows)
+            {
+                break;
+            }
+
+            var row = new Dictionary<string, object?>(StringComparer.Ordinal);
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+            }
+
+            rows.Add(row);
+        }
+
+        return Results.Ok(new
+        {
+            columns,
+            rows,
+            rowCount = rows.Count,
+            truncated = rows.Count >= maxRows
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.RequireCors("Site");
+
 app.Run();
+
+static bool TryAuthorize(HttpRequest httpRequest, IConfiguration config, out IResult? error)
+{
+    error = null;
+    var expectedKey = config["Analytics:ApiKey"];
+    if (string.IsNullOrWhiteSpace(expectedKey))
+    {
+        error = Results.Problem("Analytics:ApiKey is not configured.", statusCode: 500);
+        return false;
+    }
+
+    if (!httpRequest.Headers.TryGetValue("X-Api-Key", out var provided)
+        || !FixedTimeEquals(provided.ToString(), expectedKey))
+    {
+        error = Results.Unauthorized();
+        return false;
+    }
+
+    return true;
+}
+
+static bool IsReadOnlySelect(string sql)
+{
+    // Strip line comments for a light check; still reject multi-statement / writes.
+    var withoutLineComments = string.Join(
+        '\n',
+        sql.Split('\n').Select(line =>
+        {
+            var idx = line.IndexOf("--", StringComparison.Ordinal);
+            return idx >= 0 ? line[..idx] : line;
+        }));
+
+    var normalized = withoutLineComments.Trim().TrimEnd(';').Trim();
+    if (normalized.Length == 0 || normalized.Contains(';'))
+    {
+        return false;
+    }
+
+    var upper = normalized.ToUpperInvariant();
+    if (!(upper.StartsWith("SELECT", StringComparison.Ordinal) || upper.StartsWith("WITH", StringComparison.Ordinal)))
+    {
+        return false;
+    }
+
+    // Ignore string literals so values like 'into' do not trip keyword checks.
+    var withoutStrings = System.Text.RegularExpressions.Regex.Replace(
+        upper,
+        @"'([^']|'')*'",
+        "''",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    string[] banned =
+    [
+        "INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "REPLACE",
+        "ATTACH", "DETACH", "VACUUM", "REINDEX", "GRANT", "REVOKE", "TRUNCATE",
+        "PRAGMA"
+    ];
+
+    foreach (var word in banned)
+    {
+        if (System.Text.RegularExpressions.Regex.IsMatch(
+                withoutStrings,
+                $@"\b{word}\b",
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+        {
+            return false;
+        }
+    }
+
+    // Block SELECT … INTO / INSERT-like forms
+    if (System.Text.RegularExpressions.Regex.IsMatch(
+            withoutStrings,
+            @"\bINTO\b",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+    {
+        return false;
+    }
+
+    return true;
+}
 
 static string? SanitizePath(string? path)
 {
@@ -444,3 +637,6 @@ internal sealed record PageViewRequest(
     [property: JsonPropertyName("utmCampaign")] string? UtmCampaign,
     [property: JsonPropertyName("utmContent")] string? UtmContent,
     [property: JsonPropertyName("utmTerm")] string? UtmTerm);
+
+internal sealed record SqlQueryRequest(
+    [property: JsonPropertyName("sql")] string? Sql);

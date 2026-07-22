@@ -1173,6 +1173,41 @@ strong {
   gap: 0.5rem;
 }
 
+.admin-sql {
+  margin: 0.75rem 0 1rem;
+  max-width: 100%;
+}
+
+.admin-sql__input {
+  display: block;
+  width: 100%;
+  margin: 0.4rem 0 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--bg);
+  color: var(--text-strong);
+  font-family: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.admin-sql__input:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  border-color: var(--primary);
+}
+
+.admin-schema {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.admin-schema code {
+  font-size: 0.84rem;
+}
+
 .admin-table th,
 .admin-table td {
   padding: 0.65rem 0.75rem;

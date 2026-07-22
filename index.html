@@ -993,11 +993,39 @@
                 <tbody></tbody>
               </table>
             </div>
+            <h2 class="admin-block__title">SQL console (read-only)</h2>
+            <p class="admin-form__hint">
+              Corre <code>SELECT</code> / <code>WITH … SELECT</code> na SQLite. Máx. 200
+              linhas. Tabela principal: <code>PageViews</code>.
+            </p>
+            <div class="admin-schema" id="admin-schema"></div>
+            <form class="admin-sql" id="admin-sql-form">
+              <label class="admin-form__label" for="admin-sql">Query</label>
+              <textarea
+                id="admin-sql"
+                class="admin-sql__input"
+                rows="5"
+                spellcheck="false"
+              >SELECT Id, OccurredAtUtc, Path, ClientIp, Country, Browser, Os
+FROM PageViews
+ORDER BY OccurredAtUtc DESC
+LIMIT 50;</textarea>
+              <div class="admin-range__actions">
+                <button class="btn btn--primary" type="submit">Run query</button>
+                <button class="btn btn--ghost" type="button" id="admin-sql-schema">
+                  Show schema
+                </button>
+              </div>
+            </form>
+            <p class="admin-form__hint" id="admin-sql-hint"></p>
+            <p class="admin-form__error" id="admin-sql-error" hidden></p>
+            <div class="admin-table-wrap">
+              <table class="admin-table admin-table--wide" id="admin-sql-result">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </section>
-
-      <section class="page" data-page="contact" id="page-contact" hidden>
         <div class="section">
           <p class="section__eyebrow">Contact</p>
           <h1 class="section__title section__title--page">Let’s build something solid</h1>
