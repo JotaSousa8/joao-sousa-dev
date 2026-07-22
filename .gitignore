@@ -1,0 +1,7 @@
+_cvgen/
+CV_*.docx
+cv.docx
+cv.zip
+cv-unzip/
+cv-extract.txt
+*.log
