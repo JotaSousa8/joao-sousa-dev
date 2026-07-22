@@ -131,10 +131,12 @@ jobs:
               "analytics-connection-string=${{ secrets.ANALYTICS_CONNECTION_STRING }}" \
             --output none
 
+          # Drop legacy SQLite path if still present from older revisions.
           az containerapp update \
             --name "$APP" \
             --resource-group "$RG" \
             --image "$IMAGE_SHORT" \
+            --remove-env-vars "Analytics__DbPath" \
             --set-env-vars \
               "Analytics__ApiKey=secretref:analytics-api-key" \
               "Analytics__IpSalt=secretref:analytics-ip-salt" \

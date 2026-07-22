@@ -80,7 +80,19 @@ using (var scope = app.Services.CreateScope())
 app.UseRateLimiter();
 app.UseCors("Site");
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/health", async (AnalyticsDbContext db) =>
+{
+    var provider = db.Database.ProviderName ?? "unknown";
+    var canConnect = await db.Database.CanConnectAsync();
+    return Results.Ok(new
+    {
+        status = canConnect ? "ok" : "degraded",
+        database = provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ? "postgresql"
+            : provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) ? "sqlite"
+            : provider,
+        canConnect
+    });
+});
 
 app.MapPost("/api/analytics/pageview", async (
     PageViewRequest request,
