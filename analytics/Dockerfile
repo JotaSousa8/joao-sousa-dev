@@ -3,8 +3,9 @@ WORKDIR /src
 COPY nuget.config .
 COPY AnalyticsApi.csproj .
 RUN dotnet restore
+ARG BUILD_SHA=dev
 COPY . .
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN echo "Building ${BUILD_SHA}" && dotnet publish -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
