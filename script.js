@@ -305,8 +305,17 @@ const fillTable = (tableId, rows, columns) => {
   });
 };
 
+const parseUtcDate = (iso) => {
+  if (!iso) return null;
+  const raw = String(iso).trim();
+  // API stores UTC. If the payload omits Z/offset, treat it as UTC (not browser local).
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+  return new Date(hasZone ? raw : `${raw}Z`);
+};
+
 const formatLisbonTime = (iso) => {
-  if (!iso) return "—";
+  const date = parseUtcDate(iso);
+  if (!date || Number.isNaN(date.getTime())) return "—";
   try {
     return new Intl.DateTimeFormat("pt-PT", {
       timeZone: "Europe/Lisbon",
@@ -317,7 +326,7 @@ const formatLisbonTime = (iso) => {
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
-    }).format(new Date(iso));
+    }).format(date);
   } catch {
     return "—";
   }
@@ -361,7 +370,7 @@ const renderAdminStats = (data) => {
   const tzNote = document.getElementById("admin-tz-note");
   if (tzNote) {
     tzNote.textContent =
-      "Horário: Europe/Lisbon (Portugal). Os eventos são guardados em UTC e convertidos aqui.";
+      "When (PT) = Europe/Lisbon. Na base (Supabase/SQL) os valores estão em UTC.";
   }
 
   const rangeHint = document.getElementById("admin-range-hint");

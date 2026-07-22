@@ -20,7 +20,9 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
             entity.HasIndex(x => x.ClientIp);
 
             entity.Property(x => x.Id).HasColumnName("id");
-            entity.Property(x => x.OccurredAtUtc).HasColumnName("occurred_at_utc");
+            entity.Property(x => x.OccurredAtUtc)
+                .HasColumnName("occurred_at_utc")
+                .HasColumnType("timestamp with time zone");
             entity.Property(x => x.Path).HasColumnName("path").HasMaxLength(200).IsRequired();
             entity.Property(x => x.Referrer).HasColumnName("referrer").HasMaxLength(500);
             entity.Property(x => x.UserAgent).HasColumnName("user_agent").HasMaxLength(400);

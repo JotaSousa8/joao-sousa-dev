@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using AnalyticsApi.Persistence;
+using AnalyticsApi.Serialization;
 using AnalyticsApi.Services;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -16,6 +17,12 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException(
         "Missing Postgres connection string. Set ConnectionStrings:Analytics (or Analytics:ConnectionString / DATABASE_URL).");
 }
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+    options.SerializerOptions.Converters.Add(new UtcNullableDateTimeJsonConverter());
+});
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(connectionString));
