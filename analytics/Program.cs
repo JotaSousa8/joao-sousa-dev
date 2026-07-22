@@ -118,7 +118,8 @@ app.MapGet("/health", async (AnalyticsDbContext db, AnalyticsRuntimeState runtim
         status = canConnect ? "ok" : "degraded",
         database,
         canConnect,
-        connectionStringConfigured = runtime.HasConnectionString
+        connectionStringConfigured = runtime.HasConnectionString,
+        build = Environment.GetEnvironmentVariable("BUILD_SHA") ?? "unknown"
     });
 });
 
