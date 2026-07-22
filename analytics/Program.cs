@@ -532,9 +532,6 @@ static (string Value, string Source) ResolveConnectionStringDetailed(IConfigurat
     return raw.Length == 0 ? ("", "none") : (NormalizeConnectionString(raw), "plain");
 }
 
-static string ResolveConnectionString(IConfiguration config) =>
-    ResolveConnectionStringDetailed(config).Value;
-
 static string NormalizeConnectionString(string raw)
 {
     raw = raw.Trim().Trim('"');
