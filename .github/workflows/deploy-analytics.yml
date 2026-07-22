@@ -88,6 +88,9 @@ jobs:
           fi
 
           if ! az containerapp show --name "$APP" --resource-group "$RG" &>/dev/null; then
+            # Do not pass --registry-server for public GHCR images: Azure CLI requires
+            # username+password together with it for any non-ACR registry.
+            # Make the package public (see analytics/DEPLOY.md) so pulls work without a PAT.
             az containerapp create \
               --name "$APP" \
               --resource-group "$RG" \
@@ -95,7 +98,6 @@ jobs:
               --image "$IMAGE_SHORT" \
               --target-port 8080 \
               --ingress external \
-              --registry-server ghcr.io \
               --cpu 0.25 --memory 0.5Gi \
               --min-replicas 0 --max-replicas 1 \
               --secrets \

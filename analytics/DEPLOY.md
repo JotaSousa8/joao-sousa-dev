@@ -52,6 +52,8 @@ Optional **Variables**:
 
 After the first successful image push, open **GitHub → Packages → `joao-sousa-analytics` → Package settings → Change visibility → Public** so Azure can pull without a long-lived PAT.
 
+The workflow creates the Container App **without** GHCR registry credentials (public pull). If the package is still private, the Azure app may create successfully but revisions will fail to start until you switch visibility to Public and re-run the workflow.
+
 The job summary prints the public URL, e.g.  
 `https://ca-joaosousa-analytics.xxxx.westeurope.azurecontainerapps.io`
 
