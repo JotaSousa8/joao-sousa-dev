@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (gitignored) and fill in secrets / image.
+# Or pass -var / TF_VAR_* instead.
+
+location            = "northeurope"
+resource_group_name = "rg-joaosousa-analytics-ne"
+container_app_name  = "ca-joaosousa-analytics"
+
+# After a local docker build+push, or use a tag from GHCR:
+# image = "ghcr.io/jotasousa8/joao-sousa-analytics:latest"
+
+image = "ghcr.io/jotasousa8/joao-sousa-analytics:latest"
+
+analytics_api_key  = "replace-me"
+analytics_ip_salt  = "replace-me"

@@ -68,11 +68,11 @@ const normalizeRoute = (hash) => {
 };
 
 const analyticsMeta = document.querySelector('meta[name="analytics-endpoint"]');
+// On localhost, always hit the local API — ignore production meta so local-dev-key works.
 const analyticsEndpoint = (
-  analyticsMeta?.getAttribute("content") ||
-  (["localhost", "127.0.0.1"].includes(location.hostname)
+  ["localhost", "127.0.0.1"].includes(location.hostname)
     ? "http://localhost:5095"
-    : "")
+    : analyticsMeta?.getAttribute("content") || ""
 ).replace(/\/$/, "");
 
 const pathForRoute = (route) => {
@@ -271,7 +271,14 @@ const adminClear = document.getElementById("admin-clear");
 const adminHint = document.getElementById("admin-endpoint-hint");
 
 if (adminHint) {
-  adminHint.hidden = true;
+  // Only show the endpoint locally — never expose the production API URL in the UI.
+  const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+  if (isLocal && analyticsEndpoint) {
+    adminHint.hidden = false;
+    adminHint.textContent = `API: ${analyticsEndpoint}`;
+  } else {
+    adminHint.hidden = true;
+  }
 }
 
 if (adminKeyInput) {

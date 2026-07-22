@@ -2,6 +2,8 @@
 
 Frontend stays on **GitHub Pages**. Only the `analytics/` API runs on Azure.
 
+Infra is defined with **Terraform** under `infra/`. GitHub Actions builds the image and runs `terraform apply`.
+
 ## One-time Azure setup
 
 ### 1. Azure CLI login
@@ -46,18 +48,67 @@ Optional **Variables**:
 | `AZURE_CONTAINER_APP` | `ca-joaosousa-analytics` |
 | `AZURE_LOCATION` | `northeurope` |
 
-### 4. Run the workflow
-- Push a change under `analytics/` to `main`, or  
+### 4. Terraform remote state (needed for CI)
+
+GitHub Actions runners are ephemeral. Without remote state, every run thinks nothing exists and tries to create the RG again.
+
+One-time bootstrap (change the storage account name if it is taken — must be globally unique):
+
+```bash
+az group create --name rg-joaosousa-tfstate --location northeurope
+az storage account create \
+  --name stjoaosousatfstate \
+  --resource-group rg-joaosousa-tfstate \
+  --location northeurope \
+  --sku Standard_LRS
+az storage container create \
+  --name tfstate \
+  --account-name stjoaosousatfstate
+```
+
+Then either:
+
+- Commit `infra/backend.azurerm.tf` (copy from `backend.azurerm.tf.example`), **or**
+- Leave only the example file — the workflow copies it automatically on CI.
+
+If you renamed the storage account, edit `backend.azurerm.tf.example` to match.
+
+### 5. Local Terraform (learning loop)
+
+Install [Terraform](https://developer.hashicorp.com/terraform/install) (≥ 1.5).
+
+```bash
+cd infra
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars: image + analytics_api_key + analytics_ip_salt
+
+az login
+terraform init
+terraform plan
+terraform apply
+terraform output url
+```
+
+If Azure already has the RG / env / app from the old `az` scripts, **import** them once instead of recreating:
+
+```bash
+cd infra
+terraform init
+terraform import azurerm_resource_group.analytics /subscriptions/<SUB_ID>/resourceGroups/rg-joaosousa-analytics-ne
+terraform import azurerm_container_app_environment.analytics /subscriptions/<SUB_ID>/resourceGroups/rg-joaosousa-analytics-ne/providers/Microsoft.App/managedEnvironments/ca-joaosousa-analytics-env
+terraform import azurerm_container_app.analytics /subscriptions/<SUB_ID>/resourceGroups/rg-joaosousa-analytics-ne/providers/Microsoft.App/containerApps/ca-joaosousa-analytics
+terraform plan   # should show small or no changes
+```
+
+### 6. Run the workflow
+- Push to `main`, or  
 - **Actions** → **Deploy analytics API** → **Run workflow**
 
-After the first successful image push, open **GitHub → Packages → `joao-sousa-analytics` → Package settings → Change visibility → Public** so Azure can pull without a long-lived PAT.
+Keep **GitHub → Packages → `joao-sousa-analytics` → Public** so Azure can pull without a PAT.
 
-The workflow creates the Container App **without** GHCR registry credentials (public pull). If the package is still private, the Azure app may create successfully but revisions will fail to start until you switch visibility to Public and re-run the workflow.
+The job summary prints the public URL.
 
-The job summary prints the public URL, e.g.  
-`https://ca-joaosousa-analytics.xxxx.westeurope.azurecontainerapps.io`
-
-### 5. Point the website at the API
+### 7. Point the website at the API
 In `index.html` add (production):
 
 ```html
@@ -66,7 +117,7 @@ In `index.html` add (production):
 
 Commit + push that change (Pages only). Until this meta exists on production, tracking stays off on `joaosousadev.me` (localhost still uses `http://localhost:5095` automatically).
 
-### 6. Read stats
+### 8. Read stats
 
 **A) Site admin page** (no nav link — open directly):
 
@@ -77,11 +128,11 @@ Enter `ANALYTICS_API_KEY`. The key is stored only in your browser `localStorage`
 
 **B) Postman**
 
-Import `analytics/postman/AnalyticsApi.postman_collection.json`.
+Import the collection you need:
+- Local: `analytics/postman/AnalyticsApi.postman_collection.json` (`localhost:5095` / `local-dev-key`)
+- Production: `analytics/postman/AnalyticsApi.prod.postman_collection.json`
 
-Variables:
-- `baseUrl` → `http://localhost:5095` or your Container Apps URL  
-- `apiKey` → your `ANALYTICS_API_KEY`
+On the prod collection, open **Variables** and set `apiKey` to your `ANALYTICS_API_KEY` (leave blank in git).
 
 **C) curl**
 ```bash
@@ -89,12 +140,15 @@ curl -H "X-Api-Key: YOUR_ANALYTICS_API_KEY" https://YOUR-APP.../api/analytics/su
 ```
 
 ## Cost reminder
-Container Apps with **min replicas = 0** (configured in the workflow) scales to zero when idle → usually **€0–2/month** for a personal site. First cold start after idle can take a few seconds.
+Container Apps with **min replicas = 0** (configured in Terraform) scales to zero when idle → usually **€0–2/month** for a personal site. First cold start after idle can take a few seconds.
+
+The tfstate storage account is cheap (cents/month) when nearly empty.
 
 ## Same repo layout
 ```
 joao-sousa-dev/
-  index.html          → GitHub Pages
-  analytics/          → Docker image → Azure Container Apps
+  index.html                 → GitHub Pages
+  analytics/                 → Docker image
+  infra/                     → Terraform (RG, env, Container App)
   .github/workflows/deploy-analytics.yml
 ```

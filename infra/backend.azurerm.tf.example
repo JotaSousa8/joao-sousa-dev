@@ -1,0 +1,13 @@
+# Optional: enable remote state for CI.
+# 1. Create storage once (see analytics/DEPLOY.md → Terraform).
+# 2. Rename this file to backend.azurerm.tf (or copy contents into versions.tf).
+# 3. terraform init -reconfigure
+
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "rg-joaosousa-tfstate"
+    storage_account_name = "stjoaosousatfstate" # must be globally unique — change if taken
+    container_name       = "tfstate"
+    key                  = "analytics.tfstate"
+  }
+}

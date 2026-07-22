@@ -1,7 +1,7 @@
-# Deploy Analytics API → Azure Container Apps
+# Deploy Analytics API → Azure Container Apps (Terraform + GHCR)
 #
 # Triggers on every push to main (or manual run).
-# One-time Azure setup: see analytics/DEPLOY.md
+# Setup: see analytics/DEPLOY.md (incl. Terraform remote state for CI)
 
 name: Deploy analytics API
 
@@ -12,11 +12,10 @@ on:
 
 env:
   IMAGE_NAME: joao-sousa-analytics
-  # Override these in repo Variables if you use different names
   AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-joaosousa-analytics-ne' }}
   AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP || 'ca-joaosousa-analytics' }}
-  # westeurope often blocks new Log Analytics on free/trial; north europe is safer
   AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'northeurope' }}
+  TF_WORKING_DIR: infra
 
 jobs:
   build-and-deploy:
@@ -45,6 +44,7 @@ jobs:
           IMAGE="ghcr.io/${OWNER}/${{ env.IMAGE_NAME }}"
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
           echo "tags=${IMAGE}:latest,${IMAGE}:${SHA_SHORT}" >> "$GITHUB_OUTPUT"
+          echo "image_pin=${IMAGE}:${SHA_SHORT}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push image
         uses: docker/build-push-action@v6
@@ -60,85 +60,63 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Ensure Container Apps environment exists
+      - name: Register Azure resource providers
         run: |
-          set -euo pipefail
-          RG="${{ env.AZURE_RESOURCE_GROUP }}"
-          LOC="${{ env.AZURE_LOCATION }}"
-          APP="${{ env.AZURE_CONTAINER_APP }}"
-          ENV_NAME="${APP}-env"
-          IMAGE_SHORT="${{ steps.meta.outputs.image }}:$(echo '${{ github.sha }}' | cut -c1-7)"
-
-          echo "Registering required resource providers..."
           az provider register --namespace Microsoft.App --wait
           az provider register --namespace Microsoft.OperationalInsights --wait
           az provider register --namespace Microsoft.ContainerRegistry --wait
+          az provider register --namespace Microsoft.Storage --wait
 
-          az group create --name "$RG" --location "$LOC" --output none
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
-          if ! az containerapp env show --name "$ENV_NAME" --resource-group "$RG" &>/dev/null; then
-            # --logs-destination none avoids creating a Log Analytics workspace
-            # (many trial subscriptions cannot create new LAW in some regions)
-            az containerapp env create \
-              --name "$ENV_NAME" \
-              --resource-group "$RG" \
-              --location "$LOC" \
-              --logs-destination none \
-              --output none
-          fi
-
-          if ! az containerapp show --name "$APP" --resource-group "$RG" &>/dev/null; then
-            # Do not pass --registry-server for public GHCR images: Azure CLI requires
-            # username+password together with it for any non-ACR registry.
-            # Make the package public (see analytics/DEPLOY.md) so pulls work without a PAT.
-            az containerapp create \
-              --name "$APP" \
-              --resource-group "$RG" \
-              --environment "$ENV_NAME" \
-              --image "$IMAGE_SHORT" \
-              --target-port 8080 \
-              --ingress external \
-              --cpu 0.25 --memory 0.5Gi \
-              --min-replicas 0 --max-replicas 1 \
-              --secrets \
-                "analytics-api-key=${{ secrets.ANALYTICS_API_KEY }}" \
-                "analytics-ip-salt=${{ secrets.ANALYTICS_IP_SALT }}" \
-              --env-vars \
-                "Analytics__ApiKey=secretref:analytics-api-key" \
-                "Analytics__IpSalt=secretref:analytics-ip-salt" \
-                "Analytics__DbPath=/data/analytics.db" \
-                "ASPNETCORE_URLS=http://+:8080" \
-              --output none
-          fi
-
-      - name: Deploy new revision
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
         run: |
           set -euo pipefail
-          RG="${{ env.AZURE_RESOURCE_GROUP }}"
-          APP="${{ env.AZURE_CONTAINER_APP }}"
-          IMAGE_SHORT="${{ steps.meta.outputs.image }}:$(echo '${{ github.sha }}' | cut -c1-7)"
+          # Enable remote state when the example file is present as backend.azurerm.tf
+          if [[ -f backend.azurerm.tf.example && ! -f backend.azurerm.tf ]]; then
+            echo "Copying backend.azurerm.tf.example → backend.azurerm.tf for CI remote state."
+            cp backend.azurerm.tf.example backend.azurerm.tf
+          fi
+          terraform init -input=false
 
-          az containerapp secret set \
-            --name "$APP" \
-            --resource-group "$RG" \
-            --secrets \
-              "analytics-api-key=${{ secrets.ANALYTICS_API_KEY }}" \
-              "analytics-ip-salt=${{ secrets.ANALYTICS_IP_SALT }}" \
-            --output none
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+          TF_VAR_analytics_api_key: ${{ secrets.ANALYTICS_API_KEY }}
+          TF_VAR_analytics_ip_salt: ${{ secrets.ANALYTICS_IP_SALT }}
+          TF_VAR_image: ${{ steps.meta.outputs.image_pin }}
+          TF_VAR_location: ${{ env.AZURE_LOCATION }}
+          TF_VAR_resource_group_name: ${{ env.AZURE_RESOURCE_GROUP }}
+          TF_VAR_container_app_name: ${{ env.AZURE_CONTAINER_APP }}
+        run: |
+          set -euo pipefail
+          terraform apply -auto-approve -input=false
 
-          az containerapp update \
-            --name "$APP" \
-            --resource-group "$RG" \
-            --image "$IMAGE_SHORT" \
-            --set-env-vars \
-              "Analytics__ApiKey=secretref:analytics-api-key" \
-              "Analytics__IpSalt=secretref:analytics-ip-salt" \
-              "Analytics__DbPath=/data/analytics.db" \
-              "ASPNETCORE_URLS=http://+:8080" \
-            --output none
-
-          FQDN=$(az containerapp show -n "$APP" -g "$RG" --query properties.configuration.ingress.fqdn -o tsv)
+      - name: Job summary
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ARM_USE_OIDC: true
+        run: |
+          set -euo pipefail
+          URL=$(terraform output -raw url)
+          HEALTH=$(terraform output -raw health_url)
           echo "### Analytics API" >> "$GITHUB_STEP_SUMMARY"
-          echo "URL: \`https://${FQDN}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Health: \`https://${FQDN}/health\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "Set site meta: \`<meta name=\"analytics-endpoint\" content=\"https://${FQDN}\" />\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "URL: \`${URL}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Health: \`${HEALTH}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Set site meta: \`<meta name=\"analytics-endpoint\" content=\"${URL}\" />\`" >> "$GITHUB_STEP_SUMMARY"
