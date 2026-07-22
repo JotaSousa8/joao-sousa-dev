@@ -53,9 +53,28 @@ var allowedOrigins = builder.Configuration.GetSection("Analytics:AllowedOrigins"
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Site", policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // Any localhost / 127.0.0.1 port while developing (Live Server, Vite, preview, etc.)
+            policy.SetIsOriginAllowed(static origin =>
+                {
+                    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                    {
+                        return false;
+                    }
+
+                    return uri.Host is "localhost" or "127.0.0.1";
+                })
+                .AllowAnyHeader()
+                .WithMethods("GET", "POST", "OPTIONS");
+            return;
+        }
+
         policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .WithMethods("GET", "POST", "OPTIONS"));
+            .WithMethods("GET", "POST", "OPTIONS");
+    });
 });
 
 builder.Services.AddRateLimiter(options =>
