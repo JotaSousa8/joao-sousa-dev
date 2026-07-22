@@ -17,6 +17,7 @@ const pageTitles = {
   projects: "Projects — João Sousa",
   stack: "Stack — João Sousa",
   more: "Beyond work — João Sousa",
+  admin: "Analytics — João Sousa",
   contact: "Contact — João Sousa",
 };
 
@@ -31,6 +32,7 @@ const routeMap = {
   projects: "projects",
   stack: "stack",
   more: "more",
+  admin: "admin",
   contact: "contact",
 };
 
@@ -43,6 +45,7 @@ const hashForRoute = {
   projects: "#/projects",
   stack: "#/stack",
   more: "#/more",
+  admin: "#/admin",
   contact: "#/contact",
 };
 
@@ -55,6 +58,7 @@ const navForRoute = {
   projects: "projects",
   stack: "stack",
   more: "more",
+  admin: "home",
   contact: "contact",
 };
 
@@ -77,7 +81,7 @@ const pathForRoute = (route) => {
 };
 
 const trackPageView = (route) => {
-  if (!analyticsEndpoint) return;
+  if (!analyticsEndpoint || route === "admin") return;
   const payload = JSON.stringify({
     path: pathForRoute(route),
     referrer: document.referrer || "",
@@ -235,3 +239,127 @@ if (!location.hash || location.hash === "#") {
 } else {
   syncFromHash();
 }
+
+const ADMIN_KEY_STORAGE = "analyticsApiKey";
+const adminForm = document.getElementById("admin-form");
+const adminKeyInput = document.getElementById("admin-api-key");
+const adminError = document.getElementById("admin-error");
+const adminStats = document.getElementById("admin-stats");
+const adminClear = document.getElementById("admin-clear");
+const adminHint = document.getElementById("admin-endpoint-hint");
+
+if (adminHint) {
+  adminHint.textContent = analyticsEndpoint
+    ? `API: ${analyticsEndpoint}`
+    : "No analytics endpoint configured. Set meta analytics-endpoint or run API on localhost:5095.";
+}
+
+if (adminKeyInput) {
+  const saved = localStorage.getItem(ADMIN_KEY_STORAGE);
+  if (saved) {
+    adminKeyInput.value = saved;
+    if (adminClear) adminClear.hidden = false;
+  }
+}
+
+const fillTable = (tableId, rows, columns) => {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return;
+  tbody.replaceChildren();
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    columns.forEach((col) => {
+      const td = document.createElement("td");
+      const value = typeof col === "function" ? col(row) : row[col];
+      td.textContent = value == null || value === "" ? "—" : String(value);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+};
+
+const renderAdminStats = (data) => {
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value ?? "—");
+  };
+  set("kpi-total", data.totalViews);
+  set("kpi-7", data.viewsLast7Days);
+  set("kpi-30", data.viewsLast30Days);
+  set("kpi-unique", data.uniqueVisitorsLast30Days);
+
+  fillTable("admin-by-path", data.byPath || [], ["path", "views"]);
+  fillTable("admin-recent", data.recent || [], [
+    (row) => (row.occurredAtUtc ? new Date(row.occurredAtUtc).toISOString().replace("T", " ").slice(0, 19) : "—"),
+    "path",
+    "country",
+    (row) => row.referrer || "—",
+  ]);
+
+  if (adminStats) adminStats.hidden = false;
+};
+
+const loadAdminStats = async (apiKey) => {
+  if (!analyticsEndpoint) {
+    if (adminError) {
+      adminError.hidden = false;
+      adminError.textContent = "Analytics API endpoint is not configured.";
+    }
+    return;
+  }
+
+  if (adminError) adminError.hidden = true;
+
+  const response = await fetch(`${analyticsEndpoint}/api/analytics/summary`, {
+    headers: { "X-Api-Key": apiKey },
+    mode: "cors",
+  });
+
+  if (!response.ok) {
+    if (adminError) {
+      adminError.hidden = false;
+      adminError.textContent =
+        response.status === 401
+          ? "Invalid API key."
+          : `Could not load stats (${response.status}).`;
+    }
+    if (adminStats) adminStats.hidden = true;
+    return;
+  }
+
+  const data = await response.json();
+  localStorage.setItem(ADMIN_KEY_STORAGE, apiKey);
+  if (adminClear) adminClear.hidden = false;
+  renderAdminStats(data);
+};
+
+if (adminForm && adminKeyInput) {
+  adminForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const key = adminKeyInput.value.trim();
+    if (!key) {
+      if (adminError) {
+        adminError.hidden = false;
+        adminError.textContent = "Enter the API key.";
+      }
+      return;
+    }
+    loadAdminStats(key).catch(() => {
+      if (adminError) {
+        adminError.hidden = false;
+        adminError.textContent = "Network error talking to the analytics API.";
+      }
+    });
+  });
+}
+
+if (adminClear && adminKeyInput) {
+  adminClear.addEventListener("click", () => {
+    localStorage.removeItem(ADMIN_KEY_STORAGE);
+    adminKeyInput.value = "";
+    adminClear.hidden = true;
+    if (adminStats) adminStats.hidden = true;
+    if (adminError) adminError.hidden = true;
+  });
+}
+

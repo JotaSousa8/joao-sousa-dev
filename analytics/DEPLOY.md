@@ -65,6 +65,23 @@ In `index.html` add (production):
 Commit + push that change (Pages only). Until this meta exists on production, tracking stays off on `joaosousadev.me` (localhost still uses `http://localhost:5095` automatically).
 
 ### 6. Read stats
+
+**A) Site admin page** (no nav link — open directly):
+
+`https://joaosousadev.me/#/admin`  
+(or locally `http://localhost:5174/#/admin`)
+
+Enter `ANALYTICS_API_KEY`. The key is stored only in your browser `localStorage`.
+
+**B) Postman**
+
+Import `analytics/postman/AnalyticsApi.postman_collection.json`.
+
+Variables:
+- `baseUrl` → `http://localhost:5095` or your Container Apps URL  
+- `apiKey` → your `ANALYTICS_API_KEY`
+
+**C) curl**
 ```bash
 curl -H "X-Api-Key: YOUR_ANALYTICS_API_KEY" https://YOUR-APP.../api/analytics/summary
 ```

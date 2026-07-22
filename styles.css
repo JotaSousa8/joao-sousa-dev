@@ -1033,6 +1033,127 @@ strong {
   }
 }
 
+.admin-form {
+  margin: 1.5rem 0 2rem;
+  max-width: 40rem;
+}
+
+.admin-form__label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.admin-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.admin-form__input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--bg);
+  color: var(--text-strong);
+  font-family: var(--font);
+  font-size: 0.98rem;
+}
+
+.admin-form__input:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  border-color: var(--primary);
+}
+
+.admin-form__hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.admin-form__error {
+  margin: 0.75rem 0 0;
+  color: #b42318;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.admin-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-kpi {
+  padding: 1rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--bg-soft);
+}
+
+.admin-kpi__value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.admin-kpi__label {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-light);
+}
+
+.admin-block__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.admin-table th {
+  background: var(--bg-soft);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 720px) {
+  .admin-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

@@ -1,0 +1,57 @@
+{
+  "info": {
+    "name": "João Sousa — Analytics API",
+    "description": "Pageviews + summary for joaosousadev.me analytics backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5095"
+    },
+    {
+      "key": "apiKey",
+      "value": "local-dev-key"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "Record pageview",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"path\": \"/\",\n  \"referrer\": \"https://www.linkedin.com/\"\n}"
+        },
+        "url": "{{baseUrl}}/api/analytics/pageview"
+      }
+    },
+    {
+      "name": "Summary (stats)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Api-Key",
+            "value": "{{apiKey}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/analytics/summary"
+      }
+    }
+  ]
+}

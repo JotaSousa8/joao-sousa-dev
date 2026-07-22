@@ -156,7 +156,8 @@ app.MapGet("/api/analytics/summary", async (
         byDay,
         recent
     });
-});
+})
+.RequireCors("Site");
 
 app.Run();
 
