@@ -17,13 +17,17 @@ const string MissingDb =
     "Host=127.0.0.1;Port=5432;Database=missing;Username=missing;Password=missing;SSL Mode=Disable";
 string connectionString;
 var hasConnectionString = false;
+var resolveSource = "none";
 try
 {
-    connectionString = ResolveConnectionString(builder.Configuration);
+    var resolved = ResolveConnectionStringDetailed(builder.Configuration);
+    connectionString = resolved.Value;
+    resolveSource = resolved.Source;
     if (string.IsNullOrWhiteSpace(connectionString))
     {
         Console.Error.WriteLine("WARNING: Missing ConnectionStrings:Analytics. Set ANALYTICS_CONNECTION_STRING.");
         connectionString = MissingDb;
+        resolveSource = "missing";
     }
     else
     {
@@ -37,6 +41,7 @@ catch (Exception ex)
     Console.Error.WriteLine($"WARNING: Invalid ConnectionStrings:Analytics ({ex.GetType().Name}: {ex.Message}). Starting degraded.");
     connectionString = MissingDb;
     hasConnectionString = false;
+    resolveSource = "invalid";
 }
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -45,7 +50,12 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new UtcNullableDateTimeJsonConverter());
 });
 
-builder.Services.AddSingleton(new AnalyticsRuntimeState(hasConnectionString));
+builder.Services.AddSingleton(new AnalyticsRuntimeState(
+    hasConnectionString,
+    resolveSource,
+    Environment.GetEnvironmentVariable("ConnectionStrings__Analytics")?.Length ?? 0,
+    Environment.GetEnvironmentVariable("ConnectionStrings__AnalyticsB64")?.Length ?? 0,
+    Environment.GetEnvironmentVariable("ANALYTICS_CONNECTION_STRING")?.Length ?? 0));
 
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -138,6 +148,13 @@ app.MapGet("/health", async (AnalyticsDbContext db, AnalyticsRuntimeState runtim
         database,
         canConnect,
         connectionStringConfigured = runtime.HasConnectionString,
+        connectionStringSource = runtime.Source,
+        env = new
+        {
+            connectionStringsAnalyticsLen = runtime.PlainEnvLen,
+            connectionStringsAnalyticsB64Len = runtime.B64EnvLen,
+            analyticsConnectionStringLen = runtime.AnalyticsEnvLen
+        },
         build = Environment.GetEnvironmentVariable("BUILD_SHA") ?? "unknown"
     });
 });
@@ -480,21 +497,22 @@ app.MapGet("/api/analytics/summary", async (
 
 app.Run();
 
-static string ResolveConnectionString(IConfiguration config)
+static (string Value, string Source) ResolveConnectionStringDetailed(IConfiguration config)
 {
     static string? NullIfEmpty(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    // Optional base64 wrapper avoids Azure CLI mangling '=' / spaces in secrets.
+    // Prefer direct process env (ACA secretref) before layered config.
     var b64 =
-        NullIfEmpty(config["ConnectionStrings:AnalyticsB64"])
+        NullIfEmpty(Environment.GetEnvironmentVariable("ConnectionStrings__AnalyticsB64"))
+        ?? NullIfEmpty(config["ConnectionStrings:AnalyticsB64"])
         ?? NullIfEmpty(config["ANALYTICS_CONNECTION_STRING_B64"])
         ?? NullIfEmpty(Environment.GetEnvironmentVariable("ANALYTICS_CONNECTION_STRING_B64"));
     if (b64 is not null)
     {
         try
         {
-            return NormalizeConnectionString(Encoding.UTF8.GetString(Convert.FromBase64String(b64)));
+            return (NormalizeConnectionString(Encoding.UTF8.GetString(Convert.FromBase64String(b64))), "b64");
         }
         catch (Exception ex)
         {
@@ -503,15 +521,19 @@ static string ResolveConnectionString(IConfiguration config)
     }
 
     var raw =
-        NullIfEmpty(config.GetConnectionString("Analytics"))
+        NullIfEmpty(Environment.GetEnvironmentVariable("ConnectionStrings__Analytics"))
+        ?? NullIfEmpty(Environment.GetEnvironmentVariable("ANALYTICS_CONNECTION_STRING"))
+        ?? NullIfEmpty(config.GetConnectionString("Analytics"))
         ?? NullIfEmpty(config["Analytics:ConnectionString"])
         ?? NullIfEmpty(config["ANALYTICS_CONNECTION_STRING"])
-        ?? NullIfEmpty(Environment.GetEnvironmentVariable("ANALYTICS_CONNECTION_STRING"))
         ?? NullIfEmpty(config["DATABASE_URL"])
         ?? "";
 
-    return raw.Length == 0 ? raw : NormalizeConnectionString(raw);
+    return raw.Length == 0 ? ("", "none") : (NormalizeConnectionString(raw), "plain");
 }
+
+static string ResolveConnectionString(IConfiguration config) =>
+    ResolveConnectionStringDetailed(config).Value;
 
 static string NormalizeConnectionString(string raw)
 {
@@ -667,4 +689,9 @@ internal sealed record PageViewRequest(
     [property: JsonPropertyName("utmContent")] string? UtmContent,
     [property: JsonPropertyName("utmTerm")] string? UtmTerm);
 
-internal sealed record AnalyticsRuntimeState(bool HasConnectionString);
+internal sealed record AnalyticsRuntimeState(
+    bool HasConnectionString,
+    string Source,
+    int PlainEnvLen,
+    int B64EnvLen,
+    int AnalyticsEnvLen);
