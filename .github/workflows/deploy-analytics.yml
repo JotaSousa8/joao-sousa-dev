@@ -16,7 +16,7 @@ on:
 env:
   IMAGE_NAME: joao-sousa-analytics
   # Override these in repo Variables if you use different names
-  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-joaosousa-analytics' }}
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'rg-joaosousa-analytics-ne' }}
   AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP || 'ca-joaosousa-analytics' }}
   # westeurope often blocks new Log Analytics on free/trial; north europe is safer
   AZURE_LOCATION: ${{ vars.AZURE_LOCATION || 'northeurope' }}

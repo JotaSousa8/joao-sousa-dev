@@ -42,7 +42,7 @@ Optional **Variables**:
 
 | Variable | Default |
 |----------|---------|
-| `AZURE_RESOURCE_GROUP` | `rg-joaosousa-analytics` |
+| `AZURE_RESOURCE_GROUP` | `rg-joaosousa-analytics-ne` |
 | `AZURE_CONTAINER_APP` | `ca-joaosousa-analytics` |
 | `AZURE_LOCATION` | `northeurope` |
 
