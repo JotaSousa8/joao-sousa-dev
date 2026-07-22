@@ -50,7 +50,7 @@
             "value": "{{apiKey}}"
           }
         ],
-        "url": "{{baseUrl}}/api/analytics/summary"
+        "url": "{{baseUrl}}/api/analytics/summary?from=2026-07-01T00:00&to=2026-07-31T23:59&limit=200"
       }
     }
   ]

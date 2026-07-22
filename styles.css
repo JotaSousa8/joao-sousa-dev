@@ -1146,6 +1146,33 @@ strong {
   white-space: nowrap;
 }
 
+.admin-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin: 0.75rem 0 0.85rem;
+}
+
+.admin-range__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.admin-range__field .admin-form__input {
+  min-width: 14rem;
+}
+
+.admin-range__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .admin-table th,
 .admin-table td {
   padding: 0.65rem 0.75rem;

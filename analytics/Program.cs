@@ -92,8 +92,10 @@ app.MapPost("/api/analytics/pageview", async (
     var language = Truncate(request.Language, 32);
     var screen = FormatScreen(request.ScreenWidth, request.ScreenHeight);
     var ip = http.Connection.RemoteIpAddress;
+    var clientIp = NormalizeIp(ip);
     var salt = config["Analytics:IpSalt"] ?? "change-me-in-production";
-    var visitorHash = HashVisitor(ip?.ToString(), userAgent, salt);
+    // Stable across days: same IP + UA ≈ same visitor (NAT/VPN caveats apply).
+    var visitorHash = HashVisitor(clientIp, userAgent, salt);
 
     // Prefer Cloudflare header when present; otherwise resolve via GeoIP.
     var country = Truncate(http.Request.Headers["CF-IPCountry"].ToString(), 8);
@@ -109,6 +111,7 @@ app.MapPost("/api/analytics/pageview", async (
         Referrer = string.IsNullOrWhiteSpace(referrer) ? null : referrer,
         UserAgent = string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
         VisitorHash = visitorHash,
+        ClientIp = clientIp,
         Country = string.IsNullOrWhiteSpace(country) ? null : country,
         Language = language,
         Screen = screen,
@@ -147,15 +150,37 @@ app.MapGet("/api/analytics/summary", async (
     var now = DateTime.UtcNow;
     var last7 = now.AddDays(-7);
     var last30 = now.AddDays(-30);
+    var lisbon = ResolveLisbonTimeZone();
+
+    var fromUtc = ParseQueryUtc(httpRequest.Query["from"], lisbon) ?? last7;
+    var toUtc = ParseQueryUtc(httpRequest.Query["to"], lisbon) ?? now.AddMinutes(1);
+    if (toUtc < fromUtc)
+    {
+        (fromUtc, toUtc) = (toUtc, fromUtc);
+    }
+
+    var limit = 100;
+    if (int.TryParse(httpRequest.Query["limit"], out var parsedLimit))
+    {
+        limit = Math.Clamp(parsedLimit, 1, 500);
+    }
 
     var total = await db.PageViews.CountAsync();
     var last7Count = await db.PageViews.CountAsync(x => x.OccurredAtUtc >= last7);
     var last30Count = await db.PageViews.CountAsync(x => x.OccurredAtUtc >= last30);
     var uniqueVisitors30 = await db.PageViews
-        .Where(x => x.OccurredAtUtc >= last30 && x.VisitorHash != null)
-        .Select(x => x.VisitorHash)
+        .Where(x => x.OccurredAtUtc >= last30 && x.ClientIp != null)
+        .Select(x => x.ClientIp)
         .Distinct()
         .CountAsync();
+    if (uniqueVisitors30 == 0)
+    {
+        uniqueVisitors30 = await db.PageViews
+            .Where(x => x.OccurredAtUtc >= last30 && x.VisitorHash != null)
+            .Select(x => x.VisitorHash)
+            .Distinct()
+            .CountAsync();
+    }
 
     var byPath = await db.PageViews
         .GroupBy(x => x.Path)
@@ -204,16 +229,52 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byDay = await db.PageViews
-        .Where(x => x.OccurredAtUtc >= last30)
-        .GroupBy(x => x.OccurredAtUtc.Date)
-        .Select(g => new { day = g.Key, views = g.Count() })
-        .OrderBy(x => x.day)
+    var dayWindowStart = now.AddDays(-30);
+    var dayStamps = await db.PageViews
+        .Where(x => x.OccurredAtUtc >= dayWindowStart)
+        .Select(x => x.OccurredAtUtc)
         .ToListAsync();
+    var byDay = dayStamps
+        .GroupBy(x => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(x, DateTimeKind.Utc), lisbon).Date)
+        .Select(g => new { day = g.Key.ToString("yyyy-MM-dd"), views = g.Count() })
+        .OrderBy(x => x.day)
+        .ToList();
+
+    var ipRows = await db.PageViews
+        .Where(x => x.ClientIp != null && x.OccurredAtUtc >= last30)
+        .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country })
+        .ToListAsync();
+    var byIp = ipRows
+        .GroupBy(x => x.ClientIp!)
+        .Select(g =>
+        {
+            var days = g
+                .Select(x => TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(x.OccurredAtUtc, DateTimeKind.Utc), lisbon).Date)
+                .Distinct()
+                .OrderByDescending(d => d)
+                .Select(d => d.ToString("yyyy-MM-dd"))
+                .ToList();
+            return new
+            {
+                ip = g.Key,
+                views = g.Count(),
+                daysActive = days.Count,
+                days,
+                country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
+                firstSeenUtc = g.Min(x => x.OccurredAtUtc),
+                lastSeenUtc = g.Max(x => x.OccurredAtUtc),
+            };
+        })
+        .OrderByDescending(x => x.views)
+        .Take(30)
+        .ToList();
+
+    var rangeCount = await db.PageViews.CountAsync(x => x.OccurredAtUtc >= fromUtc && x.OccurredAtUtc <= toUtc);
 
     var recent = await db.PageViews
+        .Where(x => x.OccurredAtUtc >= fromUtc && x.OccurredAtUtc <= toUtc)
         .OrderByDescending(x => x.OccurredAtUtc)
-        .Take(50)
+        .Take(limit)
         .Select(x => new
         {
             x.OccurredAtUtc,
@@ -229,6 +290,7 @@ app.MapGet("/api/analytics/summary", async (
             x.UtmCampaign,
             x.UtmContent,
             x.UtmTerm,
+            ip = x.ClientIp,
             userAgent = x.UserAgent,
             visitor = x.VisitorHash
         })
@@ -241,6 +303,14 @@ app.MapGet("/api/analytics/summary", async (
         viewsLast30Days = last30Count,
         uniqueVisitorsLast30Days = uniqueVisitors30,
         timezoneNote = "Europe/Lisbon (Portugal)",
+        range = new
+        {
+            fromUtc,
+            toUtc,
+            limit,
+            matched = rangeCount,
+            returned = recent.Count
+        },
         byPath,
         byCountry,
         byBrowser,
@@ -248,6 +318,7 @@ app.MapGet("/api/analytics/summary", async (
         byLanguage,
         byUtmSource,
         byDay,
+        byIp,
         recent
     });
 })
@@ -297,10 +368,24 @@ static string? FormatScreen(int? width, int? height)
     return $"{width}x{height}";
 }
 
+static string? NormalizeIp(System.Net.IPAddress? ip)
+{
+    if (ip is null)
+    {
+        return null;
+    }
+
+    if (ip.IsIPv4MappedToIPv6)
+    {
+        ip = ip.MapToIPv4();
+    }
+
+    return Truncate(ip.ToString(), 64);
+}
+
 static string HashVisitor(string? ip, string? userAgent, string salt)
 {
-    var day = DateTime.UtcNow.ToString("yyyy-MM-dd");
-    var material = $"{salt}|{day}|{ip}|{userAgent}";
+    var material = $"{salt}|{ip}|{userAgent}";
     var hash = SHA256.HashData(Encoding.UTF8.GetBytes(material));
     return Convert.ToHexString(hash)[..16].ToLowerInvariant();
 }
@@ -310,6 +395,42 @@ static bool FixedTimeEquals(string a, string b)
     var ba = Encoding.UTF8.GetBytes(a);
     var bb = Encoding.UTF8.GetBytes(b);
     return ba.Length == bb.Length && CryptographicOperations.FixedTimeEquals(ba, bb);
+}
+
+static TimeZoneInfo ResolveLisbonTimeZone()
+{
+    try
+    {
+        return TimeZoneInfo.FindSystemTimeZoneById("Europe/Lisbon");
+    }
+    catch (TimeZoneNotFoundException)
+    {
+        return TimeZoneInfo.FindSystemTimeZoneById("GMT Standard Time");
+    }
+}
+
+static DateTime? ParseQueryUtc(string? raw, TimeZoneInfo lisbon)
+{
+    if (string.IsNullOrWhiteSpace(raw))
+    {
+        return null;
+    }
+
+    if (!DateTime.TryParse(
+            raw,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out var parsed))
+    {
+        return null;
+    }
+
+    return parsed.Kind switch
+    {
+        DateTimeKind.Utc => parsed,
+        DateTimeKind.Local => parsed.ToUniversalTime(),
+        _ => TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(parsed, DateTimeKind.Unspecified), lisbon)
+    };
 }
 
 internal sealed record PageViewRequest(

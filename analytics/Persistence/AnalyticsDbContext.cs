@@ -16,10 +16,12 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
             entity.HasIndex(x => x.Path);
             entity.HasIndex(x => x.VisitorHash);
             entity.HasIndex(x => x.Country);
+            entity.HasIndex(x => x.ClientIp);
             entity.Property(x => x.Path).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Referrer).HasMaxLength(500);
             entity.Property(x => x.UserAgent).HasMaxLength(400);
             entity.Property(x => x.VisitorHash).HasMaxLength(32);
+            entity.Property(x => x.ClientIp).HasMaxLength(64);
             entity.Property(x => x.Country).HasMaxLength(8);
             entity.Property(x => x.Language).HasMaxLength(32);
             entity.Property(x => x.Screen).HasMaxLength(32);
@@ -63,6 +65,7 @@ public sealed class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> opti
             ("UtmCampaign", "TEXT"),
             ("UtmContent", "TEXT"),
             ("UtmTerm", "TEXT"),
+            ("ClientIp", "TEXT"),
         };
 
         foreach (var (name, sqlType) in columns)
@@ -90,6 +93,7 @@ public sealed class PageView
     public string? Referrer { get; set; }
     public string? UserAgent { get; set; }
     public string? VisitorHash { get; set; }
+    public string? ClientIp { get; set; }
     public string? Country { get; set; }
     public string? Language { get; set; }
     public string? Screen { get; set; }

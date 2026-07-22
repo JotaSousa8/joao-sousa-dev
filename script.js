@@ -329,6 +329,20 @@ const formatUtm = (row) => {
   return parts.length ? parts.join(" · ") : "—";
 };
 
+const toDatetimeLocalValue = (date) => {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const setRangePreset = (days) => {
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+  const fromInput = document.getElementById("admin-from");
+  const toInput = document.getElementById("admin-to");
+  if (fromInput) fromInput.value = toDatetimeLocalValue(from);
+  if (toInput) toInput.value = toDatetimeLocalValue(to);
+};
+
 const renderAdminStats = (data) => {
   const set = (id, value) => {
     const el = document.getElementById(id);
@@ -345,6 +359,19 @@ const renderAdminStats = (data) => {
       "Horário: Europe/Lisbon (Portugal). Os eventos são guardados em UTC e convertidos aqui.";
   }
 
+  const rangeHint = document.getElementById("admin-range-hint");
+  if (rangeHint && data.range) {
+    rangeHint.textContent = `Range: ${formatLisbonTime(data.range.fromUtc)} → ${formatLisbonTime(data.range.toUtc)} · matched ${data.range.matched}, showing ${data.range.returned}`;
+  }
+
+  fillTable("admin-by-day", data.byDay || [], ["day", "views"]);
+  fillTable("admin-by-ip", data.byIp || [], [
+    "ip",
+    "views",
+    (row) => row.daysActive ?? (row.days || []).length ?? "—",
+    (row) => row.country || "—",
+    (row) => formatLisbonTime(row.lastSeenUtc),
+  ]);
   fillTable("admin-by-path", data.byPath || [], ["path", "views"]);
   fillTable("admin-by-country", data.byCountry || [], ["country", "views"]);
   fillTable("admin-by-browser", data.byBrowser || [], ["browser", "views"]);
@@ -353,6 +380,7 @@ const renderAdminStats = (data) => {
   fillTable("admin-by-utm", data.byUtmSource || [], ["source", "views"]);
   fillTable("admin-recent", data.recent || [], [
     (row) => formatLisbonTime(row.occurredAtUtc),
+    (row) => row.ip || "—",
     "path",
     "country",
     "browser",
@@ -377,10 +405,21 @@ const loadAdminStats = async (apiKey) => {
 
   if (adminError) adminError.hidden = true;
 
-  const response = await fetch(`${analyticsEndpoint}/api/analytics/summary`, {
-    headers: { "X-Api-Key": apiKey },
-    mode: "cors",
-  });
+  const params = new URLSearchParams();
+  const fromInput = document.getElementById("admin-from");
+  const toInput = document.getElementById("admin-to");
+  if (fromInput?.value) params.set("from", fromInput.value);
+  if (toInput?.value) params.set("to", toInput.value);
+  params.set("limit", "200");
+
+  const qs = params.toString();
+  const response = await fetch(
+    `${analyticsEndpoint}/api/analytics/summary${qs ? `?${qs}` : ""}`,
+    {
+      headers: { "X-Api-Key": apiKey },
+      mode: "cors",
+    }
+  );
 
   if (!response.ok) {
     if (adminError) {
@@ -411,10 +450,45 @@ if (adminForm && adminKeyInput) {
       }
       return;
     }
+    if (!document.getElementById("admin-from")?.value) {
+      setRangePreset(7);
+    }
     loadAdminStats(key).catch(() => {
       if (adminError) {
         adminError.hidden = false;
         adminError.textContent = "Network error talking to the analytics API.";
+      }
+    });
+  });
+}
+
+const adminRangeForm = document.getElementById("admin-range-form");
+if (adminRangeForm && adminKeyInput) {
+  adminRangeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const key = adminKeyInput.value.trim();
+    if (!key) {
+      if (adminError) {
+        adminError.hidden = false;
+        adminError.textContent = "Enter the API key.";
+      }
+      return;
+    }
+    loadAdminStats(key).catch(() => {
+      if (adminError) {
+        adminError.hidden = false;
+        adminError.textContent = "Network error talking to the analytics API.";
+      }
+    });
+  });
+
+  adminRangeForm.querySelectorAll("[data-range]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const days = Number(btn.getAttribute("data-range") || "7");
+      setRangePreset(days);
+      const key = adminKeyInput.value.trim();
+      if (key) {
+        loadAdminStats(key).catch(() => {});
       }
     });
   });

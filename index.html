@@ -833,6 +833,40 @@
 
             <div class="admin-grid">
               <div>
+                <h2 class="admin-block__title">Views by day (PT)</h2>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-day">
+                    <thead>
+                      <tr>
+                        <th>Day</th>
+                        <th>Views</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h2 class="admin-block__title">By IP (30d)</h2>
+                <p class="admin-form__hint">
+                  Mesmo IP ≈ mesma rede (NAT/VPN podem agrupar ou separar pessoas).
+                </p>
+                <div class="admin-table-wrap">
+                  <table class="admin-table" id="admin-by-ip">
+                    <thead>
+                      <tr>
+                        <th>IP</th>
+                        <th>Views</th>
+                        <th>Days</th>
+                        <th>Country</th>
+                        <th>Last seen (PT)</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
                 <h2 class="admin-block__title">Views by path</h2>
                 <div class="admin-table-wrap">
                   <table class="admin-table" id="admin-by-path">
@@ -923,11 +957,29 @@
               Horário: Europe/Lisbon (Portugal). Os eventos são guardados em UTC e
               convertidos aqui.
             </p>
+            <form class="admin-range" id="admin-range-form">
+              <label class="admin-range__field">
+                <span>From (PT)</span>
+                <input type="datetime-local" id="admin-from" class="admin-form__input" />
+              </label>
+              <label class="admin-range__field">
+                <span>To (PT)</span>
+                <input type="datetime-local" id="admin-to" class="admin-form__input" />
+              </label>
+              <div class="admin-range__actions">
+                <button class="btn btn--primary" type="submit">Apply range</button>
+                <button class="btn btn--ghost" type="button" data-range="1">24h</button>
+                <button class="btn btn--ghost" type="button" data-range="7">7d</button>
+                <button class="btn btn--ghost" type="button" data-range="30">30d</button>
+              </div>
+            </form>
+            <p class="admin-form__hint" id="admin-range-hint"></p>
             <div class="admin-table-wrap">
               <table class="admin-table admin-table--wide" id="admin-recent">
                 <thead>
                   <tr>
                     <th>When (PT)</th>
+                    <th>IP</th>
                     <th>Path</th>
                     <th>Country</th>
                     <th>Browser</th>
