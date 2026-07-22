@@ -1,32 +1,43 @@
 :root,
 [data-theme="light"] {
-  --bg: #ffffff;
-  --bg-soft: #fafafa;
-  --text: #4a4a4a;
-  --text-strong: #363636;
-  --text-light: #7a7a7a;
-  --border: #ededed;
-  --primary: #ff3860;
-  --primary-dark: #e6294f;
-  --primary-hover: #ff2b56;
-  --header-bg: rgba(255, 255, 255, 0.92);
-  --font: "Outfit", BlinkMacSystemFont, -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --max: 720px;
+  --bg: #f4fbfa;
+  --bg-soft: #e7f6f4;
+  --text: #3d4f4c;
+  --text-strong: #14302c;
+  --text-light: #5f7571;
+  --border: #cfe8e4;
+  --primary: #0f9d8a;
+  --primary-dark: #0b7f70;
+  --primary-hover: #12b39d;
+  --header-bg: rgba(244, 251, 250, 0.9);
+  --font: "Figtree", "Segoe UI", sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --max: 780px;
   --space: clamp(1.25rem, 4vw, 2rem);
+  --glow: radial-gradient(
+    1200px 500px at 10% -10%,
+    rgba(45, 212, 191, 0.22),
+    transparent 55%
+  );
   color-scheme: light;
 }
 
 [data-theme="dark"] {
-  --bg: #0a0a0a;
-  --bg-soft: #141414;
-  --text: #cfcfcf;
-  --text-strong: #f5f5f5;
-  --text-light: #8a8a8a;
-  --border: #2a2a2a;
-  --primary: #ff3860;
-  --primary-dark: #ff5277;
-  --primary-hover: #ff5277;
-  --header-bg: rgba(10, 10, 10, 0.92);
+  --bg: #071412;
+  --bg-soft: #0e221f;
+  --text: #c5d9d5;
+  --text-strong: #eef8f6;
+  --text-light: #8aa8a2;
+  --border: #1e3a35;
+  --primary: #2dd4bf;
+  --primary-dark: #5eead4;
+  --primary-hover: #5eead4;
+  --header-bg: rgba(7, 20, 18, 0.9);
+  --glow: radial-gradient(
+    1000px 480px at 85% -5%,
+    rgba(45, 212, 191, 0.14),
+    transparent 50%
+  );
   color-scheme: dark;
 }
 
@@ -46,7 +57,8 @@ body {
   font-size: 1.125rem;
   line-height: 1.65;
   color: var(--text);
-  background: var(--bg);
+  background: var(--bg) var(--glow);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -109,13 +121,14 @@ strong {
   justify-content: center;
   width: 2.35rem;
   height: 2.35rem;
-  border-radius: 0.35rem;
-  background: var(--primary);
+  border-radius: 999px;
+  background: linear-gradient(145deg, var(--primary-hover), var(--primary-dark));
   color: #fff;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .brand__text {
@@ -232,15 +245,38 @@ strong {
 
 .hero__title {
   margin: 0 0 1.5rem;
-  font-size: clamp(2rem, 5.2vw, 3rem);
-  font-weight: 800;
-  line-height: 1.18;
+  font-family: var(--font-display);
+  font-size: clamp(2.15rem, 5.4vw, 3.15rem);
+  font-weight: 650;
+  line-height: 1.15;
   letter-spacing: -0.03em;
+  color: var(--text-strong);
+}
+
+.hero__place {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.hero__name {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.6rem, 7vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
   color: var(--text-strong);
 }
 
 .hero__lead {
   display: block;
+  font-size: 0.72em;
+  font-weight: 550;
+  color: var(--text);
 }
 
 .hero__typed {
@@ -401,9 +437,10 @@ strong {
 
 .proof__value {
   margin: 0;
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--primary);
   letter-spacing: -0.02em;
 }
 
@@ -663,9 +700,12 @@ strong {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 0.4rem;
+  border-radius: 1rem;
   object-fit: cover;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent),
+    0 18px 40px color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .note {
@@ -682,7 +722,7 @@ strong {
   align-items: center;
   justify-content: center;
   padding: 0.7rem 1.2rem;
-  border-radius: 0.35rem;
+  border-radius: 0.55rem;
   font-family: var(--font);
   font-size: 0.98rem;
   font-weight: 700;
@@ -754,8 +794,9 @@ strong {
 
 .section__title {
   margin: 0 0 1.5rem;
+  font-family: var(--font-display);
   font-size: clamp(1.65rem, 3.5vw, 2.1rem);
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--text-strong);
 }

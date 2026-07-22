@@ -8,7 +8,7 @@
       name="description"
       content="Senior .NET engineer in Porto focused on cloud-native backends, APIs, and data platforms across AI, fashion, and banking."
     />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#0f9d8a" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="João Sousa — Senior Software Engineer" />
     <meta
@@ -17,7 +17,7 @@
     />
     <meta
       property="og:image"
-      content="https://joaosousadev.me/images/hero-bg.png"
+      content="https://joaosousadev.me/images/joao-portrait.jpg"
     />
     <meta property="og:url" content="https://joaosousadev.me/" />
     <meta property="og:locale" content="en_GB" />
@@ -29,7 +29,7 @@
     />
     <meta
       name="twitter:image"
-      content="https://joaosousadev.me/images/hero-bg.png"
+      content="https://joaosousadev.me/images/joao-portrait.jpg"
     />
     <script>
       (() => {
@@ -47,10 +47,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260721l" />
+    <link rel="stylesheet" href="styles.css?v=20260722a" />
   </head>
   <body>
     <header class="site-header">
@@ -121,26 +121,24 @@
     <main id="app">
       <section class="page is-active" data-page="home" id="page-home">
         <div class="hero">
+          <p class="hero__place">Based in Porto · shipping since 2017</p>
           <h1 class="hero__title">
-            <span class="hero__lead">Hi, I’m João Sousa, a</span>
+            <span class="hero__name">João Sousa</span>
+            <span class="hero__lead">Senior .NET engineer for</span>
             <span class="hero__typed"
-              ><span id="typed-role">.NET engineer</span
+              ><span id="typed-role">cloud-native backends</span
               ><span class="hero__cursor" aria-hidden="true">|</span></span
             >
           </h1>
           <p class="hero__pitch">
-            Senior .NET engineer focused on
-            <strong>cloud-native backends</strong>, <strong>APIs</strong>, and
-            <strong>data platforms</strong>.
+            I build APIs and data platforms that stay fast under pressure —
+            migrations, recommendations, and the quiet work that keeps
+            production calm.
           </p>
           <p class="hero__lede">
-            I design and deliver systems that need to scale — from banking
-            back-offices to fashion recommendations and AI infrastructure —
-            across architecture, delivery, integration, and support.
-          </p>
-          <p class="hero__lede">
-            Based in <strong>Porto</strong>, with nearly a decade of experience
-            in multicultural, distributed teams.
+            From banking back-offices to fashion recommendations and AI
+            infrastructure: architecture, delivery, integration, and support
+            across multicultural teams.
           </p>
           <div class="hero__actions">
             <a class="btn btn--primary" href="#/cases" data-link>See case studies</a>
@@ -187,6 +185,10 @@
     ];
 
     <span class="k">public bool</span> <span class="p">PlaysFutsal</span> { <span class="k">get</span>; } = <span class="n">true</span>;
+    <span class="k">public string</span>[] <span class="p">AiTools</span> { <span class="k">get</span>; } =
+    [
+        <span class="s">"Cursor"</span>, <span class="s">"Copilot"</span>, <span class="s">"Gemini"</span>
+    ];
     <span class="k">public int</span> <span class="p">YearsShipping</span> { <span class="k">get</span>; } = <span class="n">DateTime.UtcNow.Year</span> - <span class="n">2017</span>;
 
     <span class="k">public void</span> <span class="m">Build</span>() =>
@@ -274,10 +276,10 @@
             </div>
             <figure class="about-photo">
               <img
-                src="images/joao-thailand.png"
+                src="images/joao-portrait.jpg"
                 alt="João Sousa"
-                width="480"
-                height="600"
+                width="505"
+                height="505"
                 loading="lazy"
                 decoding="async"
               />
@@ -721,8 +723,7 @@
           <p class="section__eyebrow">More about me</p>
           <h1 class="section__title section__title--page">Beyond work</h1>
           <p class="prose intro more-intro">
-            Same person who ships backends — still chasing the ball, lifting,
-            and blasting
+            From Porto — still chasing the ball, lifting, and blasting
             <a
               href="https://open.spotify.com/track/5dtZJhfRvdIi0Wa59HrkjG"
               target="_blank"
@@ -828,6 +829,6 @@
       </svg>
     </button>
 
-    <script src="script.js?v=20260721l"></script>
+    <script src="script.js?v=20260722a"></script>
   </body>
 </html>

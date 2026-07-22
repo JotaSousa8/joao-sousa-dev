@@ -157,10 +157,10 @@ if (themeToggle) {
 }
 
 const roles = [
-  ".NET engineer",
-  "backend specialist",
-  "platform engineer",
-  "cloud builder",
+  "cloud-native backends",
+  "APIs that stay fast",
+  "data platforms",
+  "systems under pressure",
 ];
 const typedEl = document.getElementById("typed-role");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
