@@ -187,13 +187,27 @@ app.MapPost("/api/analytics/pageview", async (
     // Stable across days: same IP + UA ≈ same visitor (NAT/VPN caveats apply).
     var visitorHash = HashVisitor(clientIp, userAgent, salt);
 
-    // Prefer Cloudflare country header when present; resolve city (+ country fallback) via GeoIP.
+    // Prefer Cloudflare country header when present; enrich via free GeoIP (ipwho.is).
     var country = Truncate(http.Request.Headers["CF-IPCountry"].ToString(), 8);
+    string? region = null;
     string? city = null;
+    string? postalCode = null;
+    double? latitude = null;
+    double? longitude = null;
+    int? asn = null;
+    string? org = null;
+    string? isp = null;
     var geo = await geoIp.ResolveAsync(ip, cancellationToken);
     if (geo is not null)
     {
+        region = geo.Region;
         city = geo.City;
+        postalCode = geo.PostalCode;
+        latitude = geo.Latitude;
+        longitude = geo.Longitude;
+        asn = geo.Asn;
+        org = geo.Org;
+        isp = geo.Isp;
         if (string.IsNullOrWhiteSpace(country) || country.Equals("XX", StringComparison.OrdinalIgnoreCase))
         {
             country = geo.CountryCode;
@@ -209,7 +223,14 @@ app.MapPost("/api/analytics/pageview", async (
         VisitorHash = visitorHash,
         ClientIp = clientIp,
         Country = string.IsNullOrWhiteSpace(country) || country.Equals("XX", StringComparison.OrdinalIgnoreCase) ? null : country,
+        Region = region,
         City = city,
+        PostalCode = postalCode,
+        Latitude = latitude,
+        Longitude = longitude,
+        Asn = asn,
+        Org = org,
+        Isp = isp,
         Language = language,
         Screen = screen,
         Browser = browser,
@@ -339,6 +360,14 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
+    var byIsp = await db.PageViews
+        .Where(x => x.Isp != null)
+        .GroupBy(x => x.Isp!)
+        .Select(g => new { isp = g.Key, views = g.Count() })
+        .OrderByDescending(x => x.views)
+        .Take(20)
+        .ToListAsync();
+
     var dayWindowStart = now.AddDays(-30);
     var dayStamps = await db.PageViews
         .Where(x => x.OccurredAtUtc >= dayWindowStart)
@@ -352,7 +381,7 @@ app.MapGet("/api/analytics/summary", async (
 
     var ipRows = await db.PageViews
         .Where(x => x.ClientIp != null && x.OccurredAtUtc >= last30)
-        .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country, x.City })
+        .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country, x.Region, x.City, x.Isp, x.Org, x.Asn })
         .ToListAsync();
     var byIp = ipRows
         .GroupBy(x => x.ClientIp!)
@@ -371,7 +400,11 @@ app.MapGet("/api/analytics/summary", async (
                 daysActive = days.Count,
                 days,
                 country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
+                region = g.Select(x => x.Region).FirstOrDefault(c => c != null),
                 city = g.Select(x => x.City).FirstOrDefault(c => c != null),
+                isp = g.Select(x => x.Isp).FirstOrDefault(c => c != null),
+                org = g.Select(x => x.Org).FirstOrDefault(c => c != null),
+                asn = g.Select(x => x.Asn).FirstOrDefault(c => c != null),
                 firstSeenUtc = g.Min(x => x.OccurredAtUtc),
                 lastSeenUtc = g.Max(x => x.OccurredAtUtc),
             };
@@ -392,7 +425,14 @@ app.MapGet("/api/analytics/summary", async (
             x.Path,
             x.Referrer,
             x.Country,
+            x.Region,
             x.City,
+            x.PostalCode,
+            x.Latitude,
+            x.Longitude,
+            x.Asn,
+            x.Org,
+            x.Isp,
             x.Language,
             x.Screen,
             x.Browser,
@@ -426,6 +466,7 @@ app.MapGet("/api/analytics/summary", async (
         byPath,
         byCountry,
         byCity,
+        byIsp,
         byBrowser,
         byOs,
         byLanguage,

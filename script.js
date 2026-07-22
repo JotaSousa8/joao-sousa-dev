@@ -384,7 +384,10 @@ const renderAdminStats = (data) => {
     "views",
     (row) => row.daysActive ?? (row.days || []).length ?? "—",
     (row) => row.country || "—",
+    (row) => row.region || "—",
     (row) => row.city || "—",
+    (row) => row.isp || row.org || "—",
+    (row) => (row.asn != null ? String(row.asn) : "—"),
     (row) => formatLisbonTime(row.lastSeenUtc),
   ]);
   fillTable("admin-by-path", data.byPath || [], ["path", "views"]);
@@ -394,6 +397,7 @@ const renderAdminStats = (data) => {
     (row) => row.country || "—",
     "views",
   ]);
+  fillTable("admin-by-isp", data.byIsp || [], ["isp", "views"]);
   fillTable("admin-by-browser", data.byBrowser || [], ["browser", "views"]);
   fillTable("admin-by-os", data.byOs || [], ["os", "views"]);
   fillTable("admin-by-language", data.byLanguage || [], ["language", "views"]);
@@ -403,7 +407,12 @@ const renderAdminStats = (data) => {
     (row) => row.ip || "—",
     "path",
     (row) => row.country || "—",
+    (row) => row.region || "—",
     (row) => row.city || "—",
+    (row) => {
+      const parts = [row.isp || row.org, row.asn != null ? `AS${row.asn}` : null].filter(Boolean);
+      return parts.length ? parts.join(" · ") : "—";
+    },
     (row) => [row.browser, row.os, row.screen].filter(Boolean).join(" · ") || "—",
     (row) => {
       const utm = formatUtm(row);

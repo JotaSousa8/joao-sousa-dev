@@ -4,7 +4,16 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace AnalyticsApi.Services;
 
-public sealed record GeoLocation(string? CountryCode, string? City);
+public sealed record GeoLocation(
+    string? CountryCode,
+    string? Region,
+    string? City,
+    string? PostalCode,
+    double? Latitude,
+    double? Longitude,
+    int? Asn,
+    string? Org,
+    string? Isp);
 
 public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<GeoIpService> logger)
 {
@@ -43,11 +52,32 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
             var country = string.IsNullOrWhiteSpace(payload.CountryCode)
                 ? null
                 : payload.CountryCode.Trim().ToUpperInvariant();
+            var region = string.IsNullOrWhiteSpace(payload.Region)
+                ? null
+                : Truncate(payload.Region.Trim(), 80);
             var city = string.IsNullOrWhiteSpace(payload.City)
                 ? null
                 : Truncate(payload.City.Trim(), 80);
+            var postal = string.IsNullOrWhiteSpace(payload.Postal)
+                ? null
+                : Truncate(payload.Postal.Trim(), 24);
+            var org = string.IsNullOrWhiteSpace(payload.Connection?.Org)
+                ? null
+                : Truncate(payload.Connection.Org.Trim(), 120);
+            var isp = string.IsNullOrWhiteSpace(payload.Connection?.Isp)
+                ? null
+                : Truncate(payload.Connection.Isp.Trim(), 120);
 
-            var location = new GeoLocation(country, city);
+            var location = new GeoLocation(
+                country,
+                region,
+                city,
+                postal,
+                payload.Latitude,
+                payload.Longitude,
+                payload.Connection?.Asn,
+                org,
+                isp);
             cache.Set(key, location, TimeSpan.FromHours(12));
             return location;
         }
@@ -78,5 +108,15 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
     private sealed record IpWhoResponse(
         [property: JsonPropertyName("success")] bool Success,
         [property: JsonPropertyName("country_code")] string? CountryCode,
-        [property: JsonPropertyName("city")] string? City);
+        [property: JsonPropertyName("region")] string? Region,
+        [property: JsonPropertyName("city")] string? City,
+        [property: JsonPropertyName("postal")] string? Postal,
+        [property: JsonPropertyName("latitude")] double? Latitude,
+        [property: JsonPropertyName("longitude")] double? Longitude,
+        [property: JsonPropertyName("connection")] IpWhoConnection? Connection);
+
+    private sealed record IpWhoConnection(
+        [property: JsonPropertyName("asn")] int? Asn,
+        [property: JsonPropertyName("org")] string? Org,
+        [property: JsonPropertyName("isp")] string? Isp);
 }
