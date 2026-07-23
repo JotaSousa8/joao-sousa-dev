@@ -198,6 +198,7 @@ app.MapPost("/api/analytics/pageview", async (
     var (browser, os) = UserAgentParser.Parse(userAgent);
     var language = Truncate(request.Language, 32);
     var screen = FormatScreen(request.ScreenWidth, request.ScreenHeight);
+    var (utmSource, utmMedium) = ResolveUtmAttribution(request);
     var ip = http.Connection.RemoteIpAddress;
     var clientIp = NormalizeIp(ip);
     var salt = config["Analytics:IpSalt"] ?? "change-me-in-production";
@@ -252,8 +253,8 @@ app.MapPost("/api/analytics/pageview", async (
         Screen = screen,
         Browser = browser,
         Os = os,
-        UtmSource = Truncate(NormalizeUtmSource(request.UtmSource), 120),
-        UtmMedium = Truncate(request.UtmMedium, 120),
+        UtmSource = utmSource,
+        UtmMedium = utmMedium,
         UtmCampaign = Truncate(request.UtmCampaign, 120),
         UtmContent = Truncate(request.UtmContent, 120),
         UtmTerm = Truncate(request.UtmTerm, 120),
@@ -749,6 +750,59 @@ static string? NormalizeUtmSource(string? value)
     };
 }
 
+/// <summary>
+/// Prefer explicit UTM; otherwise infer from Facebook/Instagram click IDs or referrer.
+/// </summary>
+static (string? Source, string? Medium) ResolveUtmAttribution(PageViewRequest request)
+{
+    var medium = Truncate(request.UtmMedium, 120);
+    var source = Truncate(NormalizeUtmSource(request.UtmSource), 120);
+    if (source is not null)
+    {
+        return (source, medium);
+    }
+
+    if (!string.IsNullOrWhiteSpace(request.Fbclid))
+    {
+        return ("facebook", medium ?? "social");
+    }
+
+    if (!string.IsNullOrWhiteSpace(request.Igshid) || !string.IsNullOrWhiteSpace(request.Igsh))
+    {
+        return ("instagram", medium ?? "social");
+    }
+
+    var fromReferrer = InferSourceFromReferrer(request.Referrer);
+    return fromReferrer is null ? (null, medium) : (fromReferrer, medium ?? "social");
+}
+
+static string? InferSourceFromReferrer(string? referrer)
+{
+    if (string.IsNullOrWhiteSpace(referrer) || !Uri.TryCreate(referrer, UriKind.Absolute, out var uri))
+    {
+        return null;
+    }
+
+    var host = uri.Host.ToLowerInvariant();
+    if (host is "facebook.com" or "www.facebook.com" or "m.facebook.com" or "lm.facebook.com"
+        or "l.facebook.com" or "fb.com" or "www.fb.com")
+    {
+        return "facebook";
+    }
+
+    if (host is "instagram.com" or "www.instagram.com" or "l.instagram.com" or "m.instagram.com")
+    {
+        return "instagram";
+    }
+
+    if (host is "linkedin.com" or "www.linkedin.com" or "lnkd.in")
+    {
+        return "linkedin";
+    }
+
+    return null;
+}
+
 static string? FormatScreen(int? width, int? height)
 {
     if (width is null or <= 0 or > 10000 || height is null or <= 0 or > 10000)
@@ -834,7 +888,10 @@ internal sealed record PageViewRequest(
     [property: JsonPropertyName("utmMedium")] string? UtmMedium,
     [property: JsonPropertyName("utmCampaign")] string? UtmCampaign,
     [property: JsonPropertyName("utmContent")] string? UtmContent,
-    [property: JsonPropertyName("utmTerm")] string? UtmTerm);
+    [property: JsonPropertyName("utmTerm")] string? UtmTerm,
+    [property: JsonPropertyName("fbclid")] string? Fbclid = null,
+    [property: JsonPropertyName("igshid")] string? Igshid = null,
+    [property: JsonPropertyName("igsh")] string? Igsh = null);
 
 internal sealed record AnalyticsRuntimeState(
     bool HasConnectionString,
