@@ -300,31 +300,41 @@ app.MapGet("/api/analytics/summary", async (
         limit = Math.Clamp(parsedLimit, 1, 500);
     }
 
-    var total = await db.PageViews.CountAsync();
-    var last7Count = await db.PageViews.CountAsync(x => x.OccurredAtUtc >= last7);
-    var last30Count = await db.PageViews.CountAsync(x => x.OccurredAtUtc >= last30);
-    var uniqueVisitors30 = await db.PageViews
+    var excludedIps = ResolveExcludedIps(config);
+    var excludedList = excludedIps.ToList();
+    // Main stats: everyone except your own IPs (still counted under ownTraffic).
+    var visitors = excludedList.Count == 0
+        ? db.PageViews
+        : db.PageViews.Where(x => x.ClientIp == null || !excludedList.Contains(x.ClientIp));
+    var ownViews = excludedList.Count == 0
+        ? db.PageViews.Where(_ => false)
+        : db.PageViews.Where(x => x.ClientIp != null && excludedList.Contains(x.ClientIp));
+
+    var total = await visitors.CountAsync();
+    var last7Count = await visitors.CountAsync(x => x.OccurredAtUtc >= last7);
+    var last30Count = await visitors.CountAsync(x => x.OccurredAtUtc >= last30);
+    var uniqueVisitors30 = await visitors
         .Where(x => x.OccurredAtUtc >= last30 && x.ClientIp != null)
         .Select(x => x.ClientIp)
         .Distinct()
         .CountAsync();
     if (uniqueVisitors30 == 0)
     {
-        uniqueVisitors30 = await db.PageViews
+        uniqueVisitors30 = await visitors
             .Where(x => x.OccurredAtUtc >= last30 && x.VisitorHash != null)
             .Select(x => x.VisitorHash)
             .Distinct()
             .CountAsync();
     }
 
-    var byPath = await db.PageViews
+    var byPath = await visitors
         .GroupBy(x => x.Path)
         .Select(g => new { path = g.Key, views = g.Count() })
         .OrderByDescending(x => x.views)
         .Take(20)
         .ToListAsync();
 
-    var byCountry = await db.PageViews
+    var byCountry = await visitors
         .Where(x => x.Country != null)
         .GroupBy(x => x.Country!)
         .Select(g => new { country = g.Key, views = g.Count() })
@@ -332,7 +342,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byCity = await db.PageViews
+    var byCity = await visitors
         .Where(x => x.City != null)
         .GroupBy(x => new { x.City, x.Country })
         .Select(g => new
@@ -345,7 +355,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byBrowser = await db.PageViews
+    var byBrowser = await visitors
         .Where(x => x.Browser != null)
         .GroupBy(x => x.Browser!)
         .Select(g => new { browser = g.Key, views = g.Count() })
@@ -353,7 +363,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byOs = await db.PageViews
+    var byOs = await visitors
         .Where(x => x.Os != null)
         .GroupBy(x => x.Os!)
         .Select(g => new { os = g.Key, views = g.Count() })
@@ -361,7 +371,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byLanguage = await db.PageViews
+    var byLanguage = await visitors
         .Where(x => x.Language != null)
         .GroupBy(x => x.Language!)
         .Select(g => new { language = g.Key, views = g.Count() })
@@ -369,7 +379,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byUtmSource = await db.PageViews
+    var byUtmSource = await visitors
         .Where(x => x.UtmSource != null)
         .GroupBy(x => x.UtmSource!)
         .Select(g => new { source = g.Key, views = g.Count() })
@@ -377,7 +387,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byIsp = await db.PageViews
+    var byIsp = await visitors
         .Where(x => x.Isp != null)
         .GroupBy(x => x.Isp!)
         .Select(g => new { isp = g.Key, views = g.Count() })
@@ -386,7 +396,7 @@ app.MapGet("/api/analytics/summary", async (
         .ToListAsync();
 
     var dayWindowStart = now.AddDays(-30);
-    var dayRows = await db.PageViews
+    var dayRows = await visitors
         .Where(x => x.OccurredAtUtc >= dayWindowStart)
         .Select(x => new { x.OccurredAtUtc, x.ClientIp, x.Country, x.City })
         .ToListAsync();
@@ -422,7 +432,7 @@ app.MapGet("/api/analytics/summary", async (
         .Take(300)
         .ToList();
 
-    var ipRows = await db.PageViews
+    var ipRows = await visitors
         .Where(x => x.ClientIp != null && x.OccurredAtUtc >= last30)
         .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country, x.Region, x.City, x.Isp, x.Org, x.Asn })
         .ToListAsync();
@@ -456,9 +466,27 @@ app.MapGet("/api/analytics/summary", async (
         .Take(30)
         .ToList();
 
-    var rangeCount = await db.PageViews.CountAsync(x => x.OccurredAtUtc >= fromUtc && x.OccurredAtUtc <= toUtc);
+    var ownIpRows = await ownViews
+        .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country, x.City, x.Path })
+        .ToListAsync();
+    var ownByIp = ownIpRows
+        .Where(x => x.ClientIp != null)
+        .GroupBy(x => x.ClientIp!)
+        .Select(g => new
+        {
+            ip = g.Key,
+            label = OwnIpLabel(g.Key),
+            views = g.Count(),
+            lastSeenUtc = g.Max(x => x.OccurredAtUtc),
+            country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
+            city = g.Select(x => x.City).FirstOrDefault(c => c != null),
+        })
+        .OrderByDescending(x => x.views)
+        .ToList();
 
-    var recent = await db.PageViews
+    var rangeCount = await visitors.CountAsync(x => x.OccurredAtUtc >= fromUtc && x.OccurredAtUtc <= toUtc);
+
+    var recent = await visitors
         .Where(x => x.OccurredAtUtc >= fromUtc && x.OccurredAtUtc <= toUtc)
         .OrderByDescending(x => x.OccurredAtUtc)
         .Take(limit)
@@ -497,6 +525,12 @@ app.MapGet("/api/analytics/summary", async (
         viewsLast7Days = last7Count,
         viewsLast30Days = last30Count,
         uniqueVisitorsLast30Days = uniqueVisitors30,
+        excludedIps = excludedList,
+        ownTraffic = new
+        {
+            totalViews = ownIpRows.Count,
+            byIp = ownByIp
+        },
         timezoneNote = "Europe/Lisbon (Portugal)",
         range = new
         {
@@ -523,6 +557,37 @@ app.MapGet("/api/analytics/summary", async (
 .RequireCors("Site");
 
 app.Run();
+
+static HashSet<string> ResolveExcludedIps(IConfiguration config)
+{
+    var set = new HashSet<string>(StringComparer.Ordinal);
+    foreach (var ip in config.GetSection("Analytics:ExcludedIps").Get<string[]>() ?? [])
+    {
+        if (!string.IsNullOrWhiteSpace(ip))
+        {
+            set.Add(ip.Trim());
+        }
+    }
+
+    var csv = config["ANALYTICS_EXCLUDED_IPS"]
+        ?? Environment.GetEnvironmentVariable("ANALYTICS_EXCLUDED_IPS");
+    if (!string.IsNullOrWhiteSpace(csv))
+    {
+        foreach (var part in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            set.Add(part);
+        }
+    }
+
+    return set;
+}
+
+static string OwnIpLabel(string ip) => ip switch
+{
+    "104.30.177.192" => "Work laptop",
+    "176.79.88.124" => "Personal mobile",
+    _ => "Own IP"
+};
 
 static (string Value, string Source) ResolveConnectionStringDetailed(IConfiguration config)
 {

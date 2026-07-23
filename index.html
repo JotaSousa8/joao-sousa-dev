@@ -58,7 +58,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260722d" />
+    <link rel="stylesheet" href="styles.css?v=20260722e" />
   </head>
   <body>
     <header class="site-header">
@@ -808,6 +808,7 @@
               </button>
             </div>
             <p class="admin-form__hint" id="admin-endpoint-hint"></p>
+            <p class="admin-form__hint" id="admin-refresh-hint" hidden></p>
             <p class="admin-form__error" id="admin-error" hidden></p>
           </form>
 
@@ -828,6 +829,10 @@
               <div class="admin-kpi">
                 <p class="admin-kpi__value" id="kpi-unique">—</p>
                 <p class="admin-kpi__label">Unique (30d)</p>
+              </div>
+              <div class="admin-kpi">
+                <p class="admin-kpi__value" id="kpi-own">—</p>
+                <p class="admin-kpi__label">Your views</p>
               </div>
             </div>
 
@@ -960,6 +965,26 @@
                   </table>
                 </div>
               </div>
+            </div>
+
+            <h2 class="admin-block__title">Your traffic (excluded from stats above)</h2>
+            <p class="admin-form__hint">
+              Work laptop and personal mobile IPs are kept here so main tables stay clean.
+            </p>
+            <div class="admin-table-wrap">
+              <table class="admin-table admin-table--fit" id="admin-own-ip">
+                <thead>
+                  <tr>
+                    <th>Device</th>
+                    <th>IP</th>
+                    <th>Views</th>
+                    <th>CC</th>
+                    <th>City</th>
+                    <th>Last seen (PT)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
             </div>
 
             <h2 class="admin-block__title">Views by day × IP (30d)</h2>
@@ -1102,6 +1127,6 @@
       </svg>
     </button>
 
-    <script src="script.js?v=20260722d"></script>
+    <script src="script.js?v=20260722e"></script>
   </body>
 </html>

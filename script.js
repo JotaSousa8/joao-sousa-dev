@@ -263,12 +263,31 @@ if (!location.hash || location.hash === "#") {
 }
 
 const ADMIN_KEY_STORAGE = "analyticsApiKey";
+const ADMIN_REFRESH_MS = 5 * 60 * 1000;
 const adminForm = document.getElementById("admin-form");
 const adminKeyInput = document.getElementById("admin-api-key");
 const adminError = document.getElementById("admin-error");
 const adminStats = document.getElementById("admin-stats");
 const adminClear = document.getElementById("admin-clear");
 const adminHint = document.getElementById("admin-endpoint-hint");
+const adminRefreshHint = document.getElementById("admin-refresh-hint");
+let adminRefreshTimer = null;
+
+const stopAdminRefresh = () => {
+  if (adminRefreshTimer) {
+    clearInterval(adminRefreshTimer);
+    adminRefreshTimer = null;
+  }
+};
+
+const startAdminRefresh = (apiKey) => {
+  stopAdminRefresh();
+  adminRefreshTimer = setInterval(() => {
+    const adminPage = document.getElementById("page-admin");
+    if (!apiKey || adminStats?.hidden || adminPage?.hidden) return;
+    loadAdminStats(apiKey, { silent: true }).catch(() => {});
+  }, ADMIN_REFRESH_MS);
+};
 
 if (adminHint) {
   // Only show the endpoint locally — never expose the production API URL in the UI.
@@ -366,6 +385,7 @@ const renderAdminStats = (data) => {
   set("kpi-7", data.viewsLast7Days);
   set("kpi-30", data.viewsLast30Days);
   set("kpi-unique", data.uniqueVisitorsLast30Days);
+  set("kpi-own", data.ownTraffic?.totalViews ?? 0);
 
   const tzNote = document.getElementById("admin-tz-note");
   if (tzNote) {
@@ -378,6 +398,19 @@ const renderAdminStats = (data) => {
     rangeHint.textContent = `Range: ${formatLisbonTime(data.range.fromUtc)} → ${formatLisbonTime(data.range.toUtc)} · matched ${data.range.matched}, showing ${data.range.returned}`;
   }
 
+  if (adminRefreshHint) {
+    adminRefreshHint.hidden = false;
+    adminRefreshHint.textContent = `Updated ${formatLisbonTime(new Date().toISOString())} · auto-refresh every 5 min (your IPs excluded from main stats)`;
+  }
+
+  fillTable("admin-own-ip", data.ownTraffic?.byIp || [], [
+    (row) => row.label || "Own IP",
+    "ip",
+    "views",
+    (row) => row.country || "—",
+    (row) => row.city || "—",
+    (row) => formatLisbonTime(row.lastSeenUtc),
+  ]);
   fillTable("admin-by-day", data.byDay || [], [
     "day",
     "views",
@@ -431,16 +464,17 @@ const renderAdminStats = (data) => {
   if (adminStats) adminStats.hidden = false;
 };
 
-const loadAdminStats = async (apiKey) => {
+const loadAdminStats = async (apiKey, options = {}) => {
+  const silent = Boolean(options.silent);
   if (!analyticsEndpoint) {
-    if (adminError) {
+    if (!silent && adminError) {
       adminError.hidden = false;
       adminError.textContent = "Analytics API endpoint is not configured.";
     }
     return;
   }
 
-  if (adminError) adminError.hidden = true;
+  if (adminError && !silent) adminError.hidden = true;
 
   const params = new URLSearchParams();
   const fromInput = document.getElementById("admin-from");
@@ -459,14 +493,15 @@ const loadAdminStats = async (apiKey) => {
   );
 
   if (!response.ok) {
-    if (adminError) {
+    if (!silent && adminError) {
       adminError.hidden = false;
       adminError.textContent =
         response.status === 401
           ? "Invalid API key."
           : `Could not load stats (${response.status}).`;
     }
-    if (adminStats) adminStats.hidden = true;
+    if (!silent && adminStats) adminStats.hidden = true;
+    if (!silent) stopAdminRefresh();
     return;
   }
 
@@ -474,6 +509,7 @@ const loadAdminStats = async (apiKey) => {
   localStorage.setItem(ADMIN_KEY_STORAGE, apiKey);
   if (adminClear) adminClear.hidden = false;
   renderAdminStats(data);
+  startAdminRefresh(apiKey);
 };
 
 if (adminForm && adminKeyInput) {
@@ -536,6 +572,8 @@ if (adminClear && adminKeyInput) {
     localStorage.removeItem(ADMIN_KEY_STORAGE);
     adminKeyInput.value = "";
     adminClear.hidden = true;
+    stopAdminRefresh();
+    if (adminRefreshHint) adminRefreshHint.hidden = true;
     if (adminStats) adminStats.hidden = true;
     if (adminError) adminError.hidden = true;
   });
