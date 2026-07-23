@@ -390,9 +390,12 @@ const renderAdminStats = (data) => {
     if (el) el.textContent = String(value ?? "—");
   };
   set("kpi-total", data.totalViews);
+  set("kpi-1h", data.viewsLastHour);
+  set("kpi-24h", data.viewsLast24Hours);
   set("kpi-7", data.viewsLast7Days);
   set("kpi-30", data.viewsLast30Days);
   set("kpi-unique", data.uniqueVisitorsLast30Days);
+  set("kpi-unique-all", data.uniqueVisitorsAllTime);
   set("kpi-own", data.ownTraffic?.totalViews ?? 0);
 
   const tzNote = document.getElementById("admin-tz-note");

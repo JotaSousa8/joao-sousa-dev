@@ -58,7 +58,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260723b" />
+    <link rel="stylesheet" href="styles.css?v=20260723c" />
   </head>
   <body>
     <header class="site-header">
@@ -140,31 +140,42 @@
           </h1>
           <p class="hero__pitch">
             I build APIs and data platforms that stay fast under pressure —
-            migrations, recommendations, and the quiet work that keeps
-            production calm.
-          </p>
-          <p class="hero__lede">
-            From banking back-offices to fashion recommendations and AI
-            infrastructure: architecture, delivery, integration, and support
-            across multicultural teams.
+            the quiet work that keeps production calm.
           </p>
           <div class="hero__actions">
             <a class="btn btn--primary" href="#/cases" data-link>See case studies</a>
-            <a class="btn btn--ghost" href="mailto:jpsousa1812@hotmail.com"
-              >Email me</a
-            >
           </div>
           <p class="hero__find">
-            Find me on
+            Or
+            <a href="mailto:jpsousa1812@hotmail.com">email me</a>
+            ·
             <a
               href="https://www.linkedin.com/in/joao-sousa-software-engineer/"
               target="_blank"
               rel="noopener noreferrer"
               >LinkedIn</a
             >
-            or email.
           </p>
+        </div>
 
+        <div class="proof">
+          <div class="proof__inner">
+            <div class="proof__item">
+              <p class="proof__value">30+</p>
+              <p class="proof__label">Microservices migrated to .NET 10</p>
+            </div>
+            <div class="proof__item">
+              <p class="proof__value">~50ms</p>
+              <p class="proof__label">Recommendation response time</p>
+            </div>
+            <div class="proof__item">
+              <p class="proof__value">40+</p>
+              <p class="proof__label">Services across a live ecosystem</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="home-code">
           <div class="code-panel" aria-label="Profile represented as C# code">
             <div class="code-panel__bar">
               <span class="code-panel__dot" aria-hidden="true"></span>
@@ -205,23 +216,6 @@
           </div>
         </div>
 
-        <div class="proof">
-          <div class="proof__inner">
-            <div class="proof__item">
-              <p class="proof__value">30+</p>
-              <p class="proof__label">Microservices migrated to .NET 10</p>
-            </div>
-            <div class="proof__item">
-              <p class="proof__value">~50ms</p>
-              <p class="proof__label">Recommendation response time</p>
-            </div>
-            <div class="proof__item">
-              <p class="proof__value">40+</p>
-              <p class="proof__label">Services across a live ecosystem</p>
-            </div>
-          </div>
-        </div>
-
         <div class="section home-cases">
           <p class="section__eyebrow">Case studies</p>
           <h2 class="section__title">Impact, not just titles</h2>
@@ -254,23 +248,11 @@
               <h2 class="section__title">Building things that people rely on</h2>
               <div class="prose">
                 <p>
-                  I’ve been writing software since <strong>2017</strong> — starting
-                  at <strong>Natixis</strong>, where I learned what it means to ship
-                  carefully in banking: clear code, solid data, and systems that
-                  hold up when the stakes are real.
-                </p>
-                <p>
-                  At <strong>Farfetch</strong> I moved into large-scale backends for
-                  recommendations, working side by side with Data Science and ML.
-                  That taught me how to keep services fast and dependable while the
-                  product — and the models behind it — kept evolving.
-                </p>
-                <p>
-                  Today, as a Senior Software Engineer at <strong>Defined.ai</strong>,
-                  I help shape cloud platforms on Azure: microservices, data privacy,
-                  and the day-to-day craft of making complex systems simpler for the
-                  people who build and run them. I also mentor juniors — because good
-                  engineering is a team sport.
+                  Since <strong>2017</strong> I’ve shipped backends across banking
+                  (<strong>Natixis</strong>), fashion recommendations
+                  (<strong>Farfetch</strong>), and AI infrastructure
+                  (<strong>Defined.ai</strong>) — focused on systems that stay
+                  fast and calm in production.
                 </p>
                 <p>
                   Outside work: futsal, the gym, and a lot of rock —
@@ -819,6 +801,14 @@
                 <p class="admin-kpi__label">Total views</p>
               </div>
               <div class="admin-kpi">
+                <p class="admin-kpi__value" id="kpi-1h">—</p>
+                <p class="admin-kpi__label">Last hour</p>
+              </div>
+              <div class="admin-kpi">
+                <p class="admin-kpi__value" id="kpi-24h">—</p>
+                <p class="admin-kpi__label">Last 24 hours</p>
+              </div>
+              <div class="admin-kpi">
                 <p class="admin-kpi__value" id="kpi-7">—</p>
                 <p class="admin-kpi__label">Last 7 days</p>
               </div>
@@ -829,6 +819,10 @@
               <div class="admin-kpi">
                 <p class="admin-kpi__value" id="kpi-unique">—</p>
                 <p class="admin-kpi__label">Unique (30d)</p>
+              </div>
+              <div class="admin-kpi">
+                <p class="admin-kpi__value" id="kpi-unique-all">—</p>
+                <p class="admin-kpi__label">Unique (all time)</p>
               </div>
               <div class="admin-kpi">
                 <p class="admin-kpi__value" id="kpi-own">—</p>
@@ -1130,6 +1124,6 @@
       </svg>
     </button>
 
-    <script src="script.js?v=20260723b"></script>
+    <script src="script.js?v=20260723c"></script>
   </body>
 </html>

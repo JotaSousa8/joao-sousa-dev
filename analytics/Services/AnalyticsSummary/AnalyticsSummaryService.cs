@@ -17,6 +17,8 @@ public sealed class AnalyticsSummaryService(
         CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
+        var lastHour = now.AddHours(-1);
+        var last24h = now.AddHours(-24);
         var last7 = now.AddDays(-7);
         var last30 = now.AddDays(-30);
         var lisbon = AnalyticsText.ResolveLisbonTimeZone();
@@ -44,6 +46,8 @@ public sealed class AnalyticsSummaryService(
             : db.PageViews.Where(x => x.ClientIp != null && excludedList.Contains(x.ClientIp));
 
         var total = await visitors.CountAsync(cancellationToken);
+        var lastHourCount = await visitors.CountAsync(x => x.OccurredAtUtc >= lastHour, cancellationToken);
+        var last24hCount = await visitors.CountAsync(x => x.OccurredAtUtc >= last24h, cancellationToken);
         var last7Count = await visitors.CountAsync(x => x.OccurredAtUtc >= last7, cancellationToken);
         var last30Count = await visitors.CountAsync(x => x.OccurredAtUtc >= last30, cancellationToken);
         var uniqueVisitors30 = await visitors
@@ -55,6 +59,20 @@ public sealed class AnalyticsSummaryService(
         {
             uniqueVisitors30 = await visitors
                 .Where(x => x.OccurredAtUtc >= last30 && x.VisitorHash != null)
+                .Select(x => x.VisitorHash)
+                .Distinct()
+                .CountAsync(cancellationToken);
+        }
+
+        var uniqueVisitorsAllTime = await visitors
+            .Where(x => x.ClientIp != null)
+            .Select(x => x.ClientIp)
+            .Distinct()
+            .CountAsync(cancellationToken);
+        if (uniqueVisitorsAllTime == 0)
+        {
+            uniqueVisitorsAllTime = await visitors
+                .Where(x => x.VisitorHash != null)
                 .Select(x => x.VisitorHash)
                 .Distinct()
                 .CountAsync(cancellationToken);
@@ -289,9 +307,12 @@ public sealed class AnalyticsSummaryService(
         return new
         {
             totalViews = total,
+            viewsLastHour = lastHourCount,
+            viewsLast24Hours = last24hCount,
             viewsLast7Days = last7Count,
             viewsLast30Days = last30Count,
             uniqueVisitorsLast30Days = uniqueVisitors30,
+            uniqueVisitorsAllTime = uniqueVisitorsAllTime,
             excludedIps = excludedList,
             ownTraffic = new
             {
