@@ -32,6 +32,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate analytics config JSON
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path("analytics")
+          files = ["appsettings.json", "appsettings.Development.json"]
+          for name in files:
+              path = root / name
+              if not path.exists():
+                  print(f"skip missing {path}")
+                  continue
+              try:
+                  json.loads(path.read_text(encoding="utf-8"))
+              except json.JSONDecodeError as ex:
+                  print(f"ERROR: {path} is invalid JSON: {ex}", file=sys.stderr)
+                  sys.exit(1)
+              print(f"ok {path}")
+          PY
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:

@@ -7,6 +7,7 @@ cv-extract.txt
 *.log
 analytics/bin/
 analytics/obj/
+analytics/_pub/
 analytics/data/**
 analytics/*.db
 analytics/*.db-*
