@@ -1,6 +1,9 @@
 namespace AnalyticsApi.Controllers;
 
+using System.Text;
 using AnalyticsApi.Contracts;
+using AnalyticsApi.Services.AnalyticsExport;
+using AnalyticsApi.Services.AnalyticsLive;
 using AnalyticsApi.Services.AnalyticsSummary;
 using AnalyticsApi.Services.ApiKey;
 using AnalyticsApi.Services.PageViewIngest;
@@ -14,6 +17,8 @@ using Microsoft.AspNetCore.RateLimiting;
 public sealed class AnalyticsController(
     IPageViewIngestService ingest,
     IAnalyticsSummaryService summary,
+    IAnalyticsLiveService live,
+    IAnalyticsExportService export,
     IApiKeyAuthenticator apiKey) : ControllerBase
 {
     [HttpPost("pageview")]
@@ -32,6 +37,17 @@ public sealed class AnalyticsController(
         return ok ? Accepted() : BadRequest(new { error = "Invalid path." });
     }
 
+    [HttpGet("live")]
+    public async Task<IActionResult> GetLive(CancellationToken cancellationToken)
+    {
+        if (apiKey.UnauthorizedIfInvalid(Request) is { } failure)
+        {
+            return failure;
+        }
+
+        return Ok(await live.GetLiveAsync(cancellationToken));
+    }
+
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary(CancellationToken cancellationToken)
     {
@@ -47,5 +63,22 @@ public sealed class AnalyticsController(
             cancellationToken);
 
         return Ok(payload);
+    }
+
+    [HttpGet("export")]
+    public async Task<IActionResult> ExportCsv(CancellationToken cancellationToken)
+    {
+        if (apiKey.UnauthorizedIfInvalid(Request) is { } failure)
+        {
+            return failure;
+        }
+
+        var (fileName, csv) = await export.BuildCsvAsync(
+            Request.Query["from"],
+            Request.Query["to"],
+            cancellationToken);
+
+        var bytes = Encoding.UTF8.GetBytes(csv);
+        return File(bytes, "text/csv; charset=utf-8", fileName);
     }
 }

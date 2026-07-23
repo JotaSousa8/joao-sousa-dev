@@ -38,9 +38,12 @@ public sealed class AnalyticsSummaryService(
 
         var excludedIps = ExcludedIpOptions.Resolve(config);
         var excludedList = excludedIps.ToList();
-        var visitors = excludedList.Count == 0
-            ? db.PageViews
-            : db.PageViews.Where(x => x.ClientIp == null || !excludedList.Contains(x.ClientIp));
+        var visitors = db.PageViews.ExcludeBots();
+        if (excludedList.Count > 0)
+        {
+            visitors = visitors.Where(x => x.ClientIp == null || !excludedList.Contains(x.ClientIp));
+        }
+
         var ownViews = excludedList.Count == 0
             ? db.PageViews.Where(_ => false)
             : db.PageViews.Where(x => x.ClientIp != null && excludedList.Contains(x.ClientIp));

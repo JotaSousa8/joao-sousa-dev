@@ -26,8 +26,14 @@ public sealed class PageViewIngestService(
             return false;
         }
 
-        var referrer = AnalyticsText.Truncate(request.Referrer, 500);
         var userAgent = AnalyticsText.Truncate(userAgentHeader, 400);
+        if (BotFilter.IsBot(userAgent))
+        {
+            // Accept without storing — crawlers should not inflate uniques.
+            return true;
+        }
+
+        var referrer = AnalyticsText.Truncate(request.Referrer, 500);
         var (browser, os) = UserAgentParser.Parse(userAgent);
         var language = AnalyticsText.Truncate(request.Language, 32);
         var screen = AnalyticsText.FormatScreen(request.ScreenWidth, request.ScreenHeight);

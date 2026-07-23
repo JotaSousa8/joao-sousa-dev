@@ -294,6 +294,7 @@ const startAdminRefresh = (apiKey) => {
     const adminPage = document.getElementById("page-admin");
     if (!apiKey || adminStats?.hidden || adminPage?.hidden) return;
     loadAdminStats(apiKey, { silent: true }).catch(() => {});
+    loadAdminLive(apiKey).catch(() => {});
   }, ADMIN_REFRESH_MS);
 };
 
@@ -397,6 +398,9 @@ const renderAdminStats = (data) => {
   set("kpi-unique", data.uniqueVisitorsLast30Days);
   set("kpi-unique-all", data.uniqueVisitorsAllTime);
   set("kpi-own", data.ownTraffic?.totalViews ?? 0);
+  if (data.uniqueLastHour != null) {
+    set("kpi-unique-1h", data.uniqueLastHour);
+  }
 
   const tzNote = document.getElementById("admin-tz-note");
   if (tzNote) {
@@ -520,6 +524,68 @@ const loadAdminStats = async (apiKey, options = {}) => {
   if (adminClear) adminClear.hidden = false;
   renderAdminStats(data);
   startAdminRefresh(apiKey);
+  loadAdminLive(apiKey).catch(() => {});
+};
+
+const loadAdminLive = async (apiKey) => {
+  if (!analyticsEndpoint || !apiKey) return;
+  const response = await fetch(`${analyticsEndpoint}/api/analytics/live`, {
+    headers: { "X-Api-Key": apiKey },
+    mode: "cors",
+  });
+  if (!response.ok) return;
+  const live = await response.json();
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = String(value ?? "—");
+  };
+  set("kpi-1h", live.viewsLastHour);
+  set("kpi-unique-1h", live.uniqueLastHour);
+};
+
+const exportAdminCsv = async (apiKey) => {
+  if (!analyticsEndpoint) {
+    if (adminError) {
+      adminError.hidden = false;
+      adminError.textContent = "Analytics API endpoint is not configured.";
+    }
+    return;
+  }
+  const params = new URLSearchParams();
+  const fromInput = document.getElementById("admin-from");
+  const toInput = document.getElementById("admin-to");
+  if (fromInput?.value) params.set("from", fromInput.value);
+  if (toInput?.value) params.set("to", toInput.value);
+  const qs = params.toString();
+  const response = await fetch(
+    `${analyticsEndpoint}/api/analytics/export${qs ? `?${qs}` : ""}`,
+    {
+      headers: { "X-Api-Key": apiKey },
+      mode: "cors",
+    }
+  );
+  if (!response.ok) {
+    if (adminError) {
+      adminError.hidden = false;
+      adminError.textContent =
+        response.status === 401
+          ? "Invalid API key."
+          : `Could not export CSV (${response.status}).`;
+    }
+    return;
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  const fileName = match?.[1] || "analytics-export.csv";
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 };
 
 if (adminForm && adminKeyInput) {
@@ -575,6 +641,26 @@ if (adminRangeForm && adminKeyInput) {
       }
     });
   });
+
+  const exportBtn = document.getElementById("admin-export-csv");
+  if (exportBtn) {
+    exportBtn.addEventListener("click", () => {
+      const key = adminKeyInput.value.trim();
+      if (!key) {
+        if (adminError) {
+          adminError.hidden = false;
+          adminError.textContent = "Enter the API key.";
+        }
+        return;
+      }
+      exportAdminCsv(key).catch(() => {
+        if (adminError) {
+          adminError.hidden = false;
+          adminError.textContent = "Network error exporting CSV.";
+        }
+      });
+    });
+  }
 }
 
 if (adminClear && adminKeyInput) {

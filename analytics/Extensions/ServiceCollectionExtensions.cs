@@ -4,6 +4,8 @@ using System.Threading.RateLimiting;
 using AnalyticsApi.Infrastructure;
 using AnalyticsApi.Infrastructure.Persistence;
 using AnalyticsApi.Serialization;
+using AnalyticsApi.Services.AnalyticsExport;
+using AnalyticsApi.Services.AnalyticsLive;
 using AnalyticsApi.Services.AnalyticsSummary;
 using AnalyticsApi.Services.ApiKey;
 using AnalyticsApi.Services.GeoIp;
@@ -82,6 +84,8 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<IUtmAttributionService, UtmAttributionService>();
         builder.Services.AddScoped<IPageViewIngestService, PageViewIngestService>();
         builder.Services.AddScoped<IAnalyticsSummaryService, AnalyticsSummaryService>();
+        builder.Services.AddScoped<IAnalyticsLiveService, AnalyticsLiveService>();
+        builder.Services.AddScoped<IAnalyticsExportService, AnalyticsExportService>();
         builder.Services.AddSingleton<IApiKeyAuthenticator, ApiKeyAuthenticator>();
 
         builder.Services.Configure<ForwardedHeadersOptions>(options =>

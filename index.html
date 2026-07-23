@@ -58,7 +58,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20260723c" />
+    <link rel="stylesheet" href="styles.css?v=20260723d" />
   </head>
   <body>
     <header class="site-header">
@@ -805,6 +805,10 @@
                 <p class="admin-kpi__label">Last hour</p>
               </div>
               <div class="admin-kpi">
+                <p class="admin-kpi__value" id="kpi-unique-1h">—</p>
+                <p class="admin-kpi__label">Unique (1h)</p>
+              </div>
+              <div class="admin-kpi">
                 <p class="admin-kpi__value" id="kpi-24h">—</p>
                 <p class="admin-kpi__label">Last 24 hours</p>
               </div>
@@ -1039,6 +1043,7 @@
               </label>
               <div class="admin-range__actions">
                 <button class="btn btn--primary" type="submit">Apply range</button>
+                <button class="btn btn--ghost" type="button" id="admin-export-csv">Export CSV</button>
                 <button class="btn btn--ghost" type="button" data-range="1">24h</button>
                 <button class="btn btn--ghost" type="button" data-range="7">7d</button>
                 <button class="btn btn--ghost" type="button" data-range="30">30d</button>
@@ -1124,6 +1129,6 @@
       </svg>
     </button>
 
-    <script src="script.js?v=20260723c"></script>
+    <script src="script.js?v=20260723d"></script>
   </body>
 </html>
