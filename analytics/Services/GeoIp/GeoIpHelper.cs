@@ -1,16 +1,13 @@
+namespace AnalyticsApi.Services.GeoIp;
+
 using System.Net;
 using System.Text.RegularExpressions;
 using AnalyticsApi.Contracts.Responses;
-
-namespace AnalyticsApi.Services.GeoIp;
 
 public static class GeoIpHelper
 {
     private static readonly Regex AsnRegex = new(@"^AS(?<n>\d+)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    /// <summary>
-    /// Prefer a more specific PT city when one provider defaults to Lisbon (common for MEO/NOS ranges).
-    /// </summary>
     public static GeoLocation? PickBest(GeoLocation? primary, GeoLocation? fallback)
     {
         if (primary is null) return fallback;

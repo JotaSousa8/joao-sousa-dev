@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
-
 namespace AnalyticsApi.Services.GeoIp.Models;
+
+using System.Text.Json.Serialization;
 
 internal sealed record IpWhoResponse(
     [property: JsonPropertyName("success")] bool Success,

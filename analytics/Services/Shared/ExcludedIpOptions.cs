@@ -1,4 +1,4 @@
-namespace AnalyticsApi.Services;
+namespace AnalyticsApi.Services.Shared;
 
 public static class ExcludedIpOptions
 {

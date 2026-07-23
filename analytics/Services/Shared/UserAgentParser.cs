@@ -1,6 +1,6 @@
-using System.Text.RegularExpressions;
+namespace AnalyticsApi.Services.Shared;
 
-namespace AnalyticsApi.Services;
+using System.Text.RegularExpressions;
 
 public static partial class UserAgentParser
 {

@@ -1,14 +1,13 @@
+namespace AnalyticsApi.Services.GeoIp;
+
 using System.Net;
 using AnalyticsApi.Contracts.Responses;
 using AnalyticsApi.Services.GeoIp.Models;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace AnalyticsApi.Services.GeoIp;
-
 public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<GeoIpService> logger)
+    : IGeoIpService
 {
-    // v3: query both free providers and prefer non-capital city when they disagree (PT ISPs often default to Lisbon).
-
     public async Task<GeoLocation?> ResolveAsync(IPAddress? ip, CancellationToken cancellationToken = default)
     {
         if (ip is null || IPAddress.IsLoopback(ip) || GeoIpHelper.IsPrivate(ip))

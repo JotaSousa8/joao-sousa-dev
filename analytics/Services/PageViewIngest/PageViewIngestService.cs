@@ -1,14 +1,17 @@
+namespace AnalyticsApi.Services.PageViewIngest;
+
 using System.Net;
 using AnalyticsApi.Contracts;
 using AnalyticsApi.Infrastructure.Persistence;
 using AnalyticsApi.Services.GeoIp;
-
-namespace AnalyticsApi.Services;
+using AnalyticsApi.Services.Shared;
+using AnalyticsApi.Services.Utm;
 
 public sealed class PageViewIngestService(
     AnalyticsDbContext db,
     IConfiguration config,
-    GeoIpService geoIp)
+    IGeoIpService geoIp,
+    IUtmAttributionService utmAttribution) : IPageViewIngestService
 {
     public async Task<bool> TryIngestAsync(
         PageViewRequest request,
@@ -28,7 +31,7 @@ public sealed class PageViewIngestService(
         var (browser, os) = UserAgentParser.Parse(userAgent);
         var language = AnalyticsText.Truncate(request.Language, 32);
         var screen = AnalyticsText.FormatScreen(request.ScreenWidth, request.ScreenHeight);
-        var utm = UtmAttribution.Resolve(request, userAgent);
+        var utm = utmAttribution.Resolve(request, userAgent);
         var clientIp = AnalyticsText.NormalizeIp(remoteIp);
         var salt = config["Analytics:IpSalt"] ?? "change-me-in-production";
         var visitorHash = AnalyticsText.HashVisitor(clientIp, userAgent, salt);

@@ -1,8 +1,8 @@
+namespace AnalyticsApi.Services.Shared;
+
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
-
-namespace AnalyticsApi.Services;
 
 public static class AnalyticsText
 {

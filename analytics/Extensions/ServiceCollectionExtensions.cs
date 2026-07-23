@@ -1,13 +1,16 @@
+namespace AnalyticsApi.Extensions;
+
 using System.Threading.RateLimiting;
 using AnalyticsApi.Infrastructure;
 using AnalyticsApi.Infrastructure.Persistence;
 using AnalyticsApi.Serialization;
-using AnalyticsApi.Services;
+using AnalyticsApi.Services.AnalyticsSummary;
+using AnalyticsApi.Services.ApiKey;
 using AnalyticsApi.Services.GeoIp;
+using AnalyticsApi.Services.PageViewIngest;
+using AnalyticsApi.Services.Utm;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
-
-namespace AnalyticsApi.Extensions;
 
 public static class ServiceCollectionExtensions
 {
@@ -70,15 +73,16 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(connectionString));
 
         builder.Services.AddMemoryCache();
-        builder.Services.AddHttpClient<GeoIpService>(client =>
+        builder.Services.AddHttpClient<IGeoIpService, GeoIpService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(2);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("joao-sousa-analytics/1.0");
         });
 
-        builder.Services.AddScoped<PageViewIngestService>();
-        builder.Services.AddScoped<AnalyticsSummaryService>();
-        builder.Services.AddSingleton<ApiKeyAuthenticator>();
+        builder.Services.AddSingleton<IUtmAttributionService, UtmAttributionService>();
+        builder.Services.AddScoped<IPageViewIngestService, PageViewIngestService>();
+        builder.Services.AddScoped<IAnalyticsSummaryService, AnalyticsSummaryService>();
+        builder.Services.AddSingleton<IApiKeyAuthenticator, ApiKeyAuthenticator>();
 
         builder.Services.Configure<ForwardedHeadersOptions>(options =>
         {
@@ -140,7 +144,6 @@ public static class ServiceCollectionExtensions
         app.UseCors("Site");
         app.MapControllers();
 
-        // Schema ensure after listen so a bad DB never blocks process start.
         app.Lifetime.ApplicationStarted.Register(() =>
         {
             _ = Task.Run(async () =>

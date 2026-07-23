@@ -1,18 +1,20 @@
+namespace AnalyticsApi.Controllers;
+
 using AnalyticsApi.Contracts;
-using AnalyticsApi.Services;
+using AnalyticsApi.Services.AnalyticsSummary;
+using AnalyticsApi.Services.ApiKey;
+using AnalyticsApi.Services.PageViewIngest;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-
-namespace AnalyticsApi.Controllers;
 
 [ApiController]
 [Route("api/analytics")]
 [EnableCors("Site")]
 public sealed class AnalyticsController(
-    PageViewIngestService ingest,
-    AnalyticsSummaryService summary,
-    ApiKeyAuthenticator apiKey) : ControllerBase
+    IPageViewIngestService ingest,
+    IAnalyticsSummaryService summary,
+    IApiKeyAuthenticator apiKey) : ControllerBase
 {
     [HttpPost("pageview")]
     [EnableRateLimiting("pageview")]

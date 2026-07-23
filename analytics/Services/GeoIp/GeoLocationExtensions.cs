@@ -1,6 +1,6 @@
-using AnalyticsApi.Contracts.Responses;
-
 namespace AnalyticsApi.Services.GeoIp;
+
+using AnalyticsApi.Contracts.Responses;
 
 public static class GeoLocationExtensions
 {

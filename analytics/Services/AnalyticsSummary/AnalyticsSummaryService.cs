@@ -1,9 +1,14 @@
+namespace AnalyticsApi.Services.AnalyticsSummary;
+
 using AnalyticsApi.Infrastructure.Persistence;
+using AnalyticsApi.Services.Shared;
+using AnalyticsApi.Services.Utm;
 using Microsoft.EntityFrameworkCore;
 
-namespace AnalyticsApi.Services;
-
-public sealed class AnalyticsSummaryService(AnalyticsDbContext db, IConfiguration config)
+public sealed class AnalyticsSummaryService(
+    AnalyticsDbContext db,
+    IConfiguration config,
+    IUtmAttributionService utmAttribution) : IAnalyticsSummaryService
 {
     public async Task<object> GetSummaryAsync(
         string? fromRaw,
@@ -112,7 +117,7 @@ public sealed class AnalyticsSummaryService(AnalyticsDbContext db, IConfiguratio
             .Select(x => x.UtmSource!)
             .ToListAsync(cancellationToken);
         var byUtmSource = utmSources
-            .GroupBy(s => UtmAttribution.NormalizeSource(s) ?? s)
+            .GroupBy(s => utmAttribution.NormalizeSource(s) ?? s)
             .Select(g => new { source = g.Key, views = g.Count() })
             .OrderByDescending(x => x.views)
             .Take(20)

@@ -1,8 +1,9 @@
+namespace AnalyticsApi.Services.ApiKey;
+
+using AnalyticsApi.Services.Shared;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AnalyticsApi.Services;
-
-public sealed class ApiKeyAuthenticator(IConfiguration config)
+public sealed class ApiKeyAuthenticator(IConfiguration config) : IApiKeyAuthenticator
 {
     public IActionResult? UnauthorizedIfInvalid(HttpRequest request)
     {

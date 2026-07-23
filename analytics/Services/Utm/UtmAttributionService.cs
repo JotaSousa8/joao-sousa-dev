@@ -1,12 +1,13 @@
+namespace AnalyticsApi.Services.Utm;
+
 using AnalyticsApi.Contracts;
 using AnalyticsApi.Contracts.Responses;
+using AnalyticsApi.Services.Shared;
 
-namespace AnalyticsApi.Services;
-
-public static class UtmAttribution
+public sealed class UtmAttributionService : IUtmAttributionService
 {
     /// <summary>Merge common short aliases into canonical UTM sources (e.g. ig → Instagram).</summary>
-    public static string? NormalizeSource(string? value)
+    public string? NormalizeSource(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -25,7 +26,7 @@ public static class UtmAttribution
     /// <summary>
     /// All URL / click-id / referrer / in-app browser attribution lives here (not in the browser).
     /// </summary>
-    public static UtmResolution Resolve(PageViewRequest request, string? userAgent)
+    public UtmResolution Resolve(PageViewRequest request, string? userAgent)
     {
         var q = ParseQueryFromUrl(request.Url);
 
@@ -78,7 +79,7 @@ public static class UtmAttribution
         return new UtmResolution(null, medium, campaign, content, term);
     }
 
-    public static string? InferSourceFromReferrer(string? referrer)
+    internal static string? InferSourceFromReferrer(string? referrer)
     {
         if (string.IsNullOrWhiteSpace(referrer) || !Uri.TryCreate(referrer, UriKind.Absolute, out var uri))
         {
@@ -107,14 +108,13 @@ public static class UtmAttribution
         return null;
     }
 
-    public static string? InferSourceFromUserAgent(string? userAgent)
+    internal static string? InferSourceFromUserAgent(string? userAgent)
     {
         if (string.IsNullOrWhiteSpace(userAgent))
         {
             return null;
         }
 
-        // Facebook / Instagram in-app browsers.
         if (userAgent.Contains("FBAN", StringComparison.OrdinalIgnoreCase)
             || userAgent.Contains("FBAV", StringComparison.OrdinalIgnoreCase)
             || userAgent.Contains("FB_IAB", StringComparison.OrdinalIgnoreCase)
@@ -132,8 +132,7 @@ public static class UtmAttribution
         return null;
     }
 
-    /// <summary>Collect query params from ?search and from #hash?query.</summary>
-    public static QueryBag ParseQueryFromUrl(string? url)
+    internal static QueryBag ParseQueryFromUrl(string? url)
     {
         var bag = new QueryBag();
         if (string.IsNullOrWhiteSpace(url))
@@ -144,7 +143,6 @@ public static class UtmAttribution
         if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
             && !Uri.TryCreate(url.Trim(), UriKind.RelativeOrAbsolute, out uri))
         {
-            // Bare query or path+query
             ParseInto(bag, url);
             return bag;
         }
@@ -172,7 +170,6 @@ public static class UtmAttribution
     private static void ParseInto(QueryBag bag, string raw)
     {
         var text = raw.StartsWith('?') ? raw[1..] : raw;
-        // Manual parse — HttpUtility may not be available on all TFMs without package.
         foreach (var part in text.Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
             var eq = part.IndexOf('=');

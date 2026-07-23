@@ -1,9 +1,9 @@
+namespace AnalyticsApi.Controllers;
+
 using AnalyticsApi.Infrastructure;
 using AnalyticsApi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
-namespace AnalyticsApi.Controllers;
 
 [ApiController]
 public sealed class HealthController(AnalyticsDbContext db, AnalyticsRuntimeState runtime) : ControllerBase

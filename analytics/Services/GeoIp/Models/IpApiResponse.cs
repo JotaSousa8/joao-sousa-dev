@@ -1,6 +1,6 @@
-using System.Text.Json.Serialization;
-
 namespace AnalyticsApi.Services.GeoIp.Models;
+
+using System.Text.Json.Serialization;
 
 internal sealed record IpApiResponse(
     [property: JsonPropertyName("status")] string? Status,
