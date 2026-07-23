@@ -454,11 +454,8 @@ const renderAdminStats = (data) => {
     (row) => row.city || "—",
     (row) => row.isp || row.org || "—",
     (row) => [row.browser, row.os, row.screen].filter(Boolean).join(" · ") || "—",
-    (row) => {
-      const utm = formatUtm(row);
-      if (utm !== "—") return utm;
-      return row.referrer || "—";
-    },
+    (row) => formatUtm(row),
+    (row) => row.referrer || "—",
   ]);
 
   if (adminStats) adminStats.hidden = false;
