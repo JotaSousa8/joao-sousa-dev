@@ -1122,16 +1122,27 @@ strong {
   gap: 0 1.25rem;
 }
 
+#page-admin .section {
+  max-width: min(1180px, 100%);
+}
+
 .admin-table-wrap {
-  overflow-x: auto;
+  overflow: auto;
   margin-bottom: 1.75rem;
   border: 1px solid var(--border);
   border-radius: 0.55rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Keep H-scrollbar near the rows you're reading */
+.admin-table-wrap--pane {
+  max-height: min(32rem, 68vh);
 }
 
 .admin-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.92rem;
   table-layout: auto;
 }
@@ -1141,36 +1152,94 @@ strong {
   padding: 0.55rem 0.7rem;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: top;
   white-space: nowrap;
   overflow-wrap: normal;
   word-break: normal;
 }
 
+.admin-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-soft);
+  box-shadow: 0 1px 0 var(--border);
+}
+
 .admin-table--fit {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
   font-size: 0.82rem;
 }
 
 .admin-table--fit th,
 .admin-table--fit td {
-  padding: 0.4rem 0.65rem;
-  line-height: 1.25;
+  padding: 0.45rem 0.65rem;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-/* Compact numeric / short cols */
+/* Short / key cols stay compact */
+.admin-table--fit th:first-child,
+.admin-table--fit td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg);
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  box-shadow: 4px 0 8px -6px color-mix(in srgb, var(--text-strong) 28%, transparent);
+}
+
+.admin-table--fit thead th:first-child {
+  z-index: 3;
+  background: var(--bg-soft);
+}
+
+#admin-own-ip th:nth-child(2),
+#admin-own-ip td:nth-child(2),
+#admin-own-ip th:nth-child(3),
+#admin-own-ip td:nth-child(3),
+#admin-own-ip th:nth-child(4),
+#admin-own-ip td:nth-child(4),
+#admin-by-day-ip th:nth-child(2),
+#admin-by-day-ip td:nth-child(2),
+#admin-by-day-ip th:nth-child(3),
+#admin-by-day-ip td:nth-child(3),
+#admin-by-day-ip th:nth-child(4),
+#admin-by-day-ip td:nth-child(4),
 #admin-by-ip th:nth-child(2),
 #admin-by-ip td:nth-child(2),
 #admin-by-ip th:nth-child(3),
 #admin-by-ip td:nth-child(3),
 #admin-by-ip th:nth-child(4),
 #admin-by-ip td:nth-child(4),
+#admin-recent th:nth-child(2),
+#admin-recent td:nth-child(2),
 #admin-recent th:nth-child(3),
 #admin-recent td:nth-child(3),
 #admin-recent th:nth-child(4),
 #admin-recent td:nth-child(4) {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
   width: 1%;
+}
+
+#admin-own-ip td:nth-child(6),
+#admin-own-ip td:nth-child(7),
+#admin-by-ip td:nth-child(5),
+#admin-by-ip td:nth-child(7),
+#admin-recent td:nth-child(5),
+#admin-recent td:nth-child(7),
+#admin-recent td:nth-child(8),
+#admin-recent td:nth-child(9),
+#admin-recent td:nth-child(10) {
+  min-width: 8.5rem;
+  max-width: 16rem;
 }
 
 .admin-range {
