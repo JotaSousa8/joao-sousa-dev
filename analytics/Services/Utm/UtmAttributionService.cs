@@ -64,6 +64,12 @@ public sealed class UtmAttributionService : IUtmAttributionService
             return new UtmResolution("instagram", medium ?? "social", campaign, content, term);
         }
 
+        var fromPath = InferSourceFromPath(request.Url) ?? InferSourceFromPath(request.Path);
+        if (fromPath is not null)
+        {
+            return new UtmResolution(fromPath, medium ?? "social", campaign, content, term);
+        }
+
         var fromReferrer = InferSourceFromReferrer(request.Referrer);
         if (fromReferrer is not null)
         {
@@ -77,6 +83,36 @@ public sealed class UtmAttributionService : IUtmAttributionService
         }
 
         return new UtmResolution(null, medium, campaign, content, term);
+    }
+
+    internal static string? InferSourceFromPath(string? urlOrPath)
+    {
+        if (string.IsNullOrWhiteSpace(urlOrPath))
+        {
+            return null;
+        }
+
+        var path = urlOrPath.Trim();
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
+        {
+            path = uri.AbsolutePath;
+        }
+
+        path = path.Trim('/').ToLowerInvariant();
+        // First segment only: /li, /li/, /fb/foo → li / fb
+        var slash = path.IndexOf('/');
+        if (slash >= 0)
+        {
+            path = path[..slash];
+        }
+
+        return path switch
+        {
+            "li" or "linkedin" or "in" => "linkedin",
+            "fb" or "facebook" => "facebook",
+            "ig" or "instagram" or "insta" => "instagram",
+            _ => null
+        };
     }
 
     internal static string? InferSourceFromReferrer(string? referrer)
