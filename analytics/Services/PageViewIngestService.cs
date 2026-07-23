@@ -27,7 +27,7 @@ public sealed class PageViewIngestService(
         var (browser, os) = UserAgentParser.Parse(userAgent);
         var language = AnalyticsText.Truncate(request.Language, 32);
         var screen = AnalyticsText.FormatScreen(request.ScreenWidth, request.ScreenHeight);
-        var (utmSource, utmMedium) = UtmAttribution.Resolve(request);
+        var utm = UtmAttribution.Resolve(request, userAgent);
         var clientIp = AnalyticsText.NormalizeIp(remoteIp);
         var salt = config["Analytics:IpSalt"] ?? "change-me-in-production";
         var visitorHash = AnalyticsText.HashVisitor(clientIp, userAgent, salt);
@@ -82,11 +82,11 @@ public sealed class PageViewIngestService(
             Screen = screen,
             Browser = browser,
             Os = os,
-            UtmSource = utmSource,
-            UtmMedium = utmMedium,
-            UtmCampaign = AnalyticsText.Truncate(request.UtmCampaign, 120),
-            UtmContent = AnalyticsText.Truncate(request.UtmContent, 120),
-            UtmTerm = AnalyticsText.Truncate(request.UtmTerm, 120),
+            UtmSource = utm.Source,
+            UtmMedium = utm.Medium,
+            UtmCampaign = utm.Campaign,
+            UtmContent = utm.Content,
+            UtmTerm = utm.Term,
         });
 
         await db.SaveChangesAsync(cancellationToken);

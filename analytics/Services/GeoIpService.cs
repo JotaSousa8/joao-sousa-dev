@@ -18,7 +18,7 @@ public sealed record GeoLocation(
 
 public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<GeoIpService> logger)
 {
-    // v2: prefer ip-api (often better city match for PT ISP ranges than ipwho.is).
+    // v3: query both free providers and prefer non-capital city when they disagree (PT ISPs often default to Lisbon).
     private static readonly Regex AsnRegex = new(@"^AS(?<n>\d+)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public async Task<GeoLocation?> ResolveAsync(IPAddress? ip, CancellationToken cancellationToken = default)
@@ -33,15 +33,17 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
             ip = ip.MapToIPv4();
         }
 
-        var key = $"geo-loc-v2:{ip}";
+        var key = $"geo-loc-v3:{ip}";
         if (cache.TryGetValue(key, out GeoLocation? cached))
         {
             return cached;
         }
 
-        var location = await TryIpApiAsync(ip, cancellationToken)
-            ?? await TryIpWhoAsync(ip, cancellationToken);
+        var ipApiTask = TryIpApiAsync(ip, cancellationToken);
+        var ipWhoTask = TryIpWhoAsync(ip, cancellationToken);
+        await Task.WhenAll(ipApiTask, ipWhoTask);
 
+        var location = PickBest(ipApiTask.Result, ipWhoTask.Result);
         if (location is not null)
         {
             cache.Set(key, location, TimeSpan.FromHours(12));
@@ -50,11 +52,71 @@ public sealed class GeoIpService(HttpClient http, IMemoryCache cache, ILogger<Ge
         return location;
     }
 
+    internal static GeoLocation? PickBest(GeoLocation? primary, GeoLocation? fallback)
+    {
+        if (primary is null) return fallback;
+        if (fallback is null) return primary;
+
+        var primaryCity = primary.City?.Trim();
+        var fallbackCity = fallback.City?.Trim();
+        if (string.IsNullOrWhiteSpace(primaryCity) && !string.IsNullOrWhiteSpace(fallbackCity))
+        {
+            return Merge(fallback, primary);
+        }
+
+        if (string.IsNullOrWhiteSpace(fallbackCity) || CitiesEqual(primaryCity, fallbackCity))
+        {
+            return Merge(primary, fallback);
+        }
+
+        // PT ISP ranges (MEO/NOS/Vodafone) often geolocate to Lisbon HQ when the user is elsewhere.
+        if (IsPortugal(primary) || IsPortugal(fallback))
+        {
+            if (IsLisbonArea(primaryCity) && !IsLisbonArea(fallbackCity))
+            {
+                return Merge(fallback, primary);
+            }
+
+            if (!IsLisbonArea(primaryCity) && IsLisbonArea(fallbackCity))
+            {
+                return Merge(primary, fallback);
+            }
+        }
+
+        return Merge(primary, fallback);
+    }
+
+    private static GeoLocation Merge(GeoLocation preferred, GeoLocation other) =>
+        new(
+            preferred.CountryCode ?? other.CountryCode,
+            preferred.Region ?? other.Region,
+            preferred.City ?? other.City,
+            preferred.PostalCode ?? other.PostalCode,
+            preferred.Latitude ?? other.Latitude,
+            preferred.Longitude ?? other.Longitude,
+            preferred.Asn ?? other.Asn,
+            preferred.Org ?? other.Org,
+            preferred.Isp ?? other.Isp);
+
+    private static bool IsPortugal(GeoLocation loc) =>
+        string.Equals(loc.CountryCode, "PT", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsLisbonArea(string? city)
+    {
+        if (string.IsNullOrWhiteSpace(city)) return false;
+        var c = city.Trim();
+        return c.Equals("Lisbon", StringComparison.OrdinalIgnoreCase)
+            || c.Equals("Lisboa", StringComparison.OrdinalIgnoreCase)
+            || c.Equals("Lisbonne", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool CitiesEqual(string? a, string? b) =>
+        string.Equals(a?.Trim(), b?.Trim(), StringComparison.OrdinalIgnoreCase);
+
     private async Task<GeoLocation?> TryIpApiAsync(IPAddress ip, CancellationToken cancellationToken)
     {
         try
         {
-            // Free tier is HTTP-only (no key). Fine for server-side lookups.
             var url =
                 $"http://ip-api.com/json/{ip}?fields=status,message,countryCode,regionName,city,zip,lat,lon,isp,org,as";
             using var response = await http.GetAsync(url, cancellationToken);

@@ -80,43 +80,37 @@ const pathForRoute = (route) => {
   return hash === "#/" ? "/" : hash.replace(/^#/, "") || "/";
 };
 
-const readQueryParams = () => {
-  const params = new URLSearchParams(location.search);
-  const hash = location.hash || "";
-  const qIndex = hash.indexOf("?");
-  if (qIndex >= 0) {
-    const hashParams = new URLSearchParams(hash.slice(qIndex + 1));
-    hashParams.forEach((value, key) => {
-      if (!params.has(key)) params.set(key, value);
-    });
+const LANDING_URL_KEY = "analytics_landing_url_v1";
+
+/** Capture the first URL of the session (keeps ?fbclid before hash routing). Backend parses it. */
+const captureLandingUrl = () => {
+  try {
+    if (!sessionStorage.getItem(LANDING_URL_KEY)) {
+      sessionStorage.setItem(LANDING_URL_KEY, location.href);
+    }
+  } catch {
+    /* private mode */
   }
-  return params;
 };
 
-const firstParamMatching = (params, predicate) => {
-  for (const [key, value] of params.entries()) {
-    if (predicate(key) && value) return value;
+const getLandingUrl = () => {
+  captureLandingUrl();
+  try {
+    return sessionStorage.getItem(LANDING_URL_KEY) || location.href;
+  } catch {
+    return location.href;
   }
-  return "";
 };
 
 const trackPageView = (route) => {
   if (!analyticsEndpoint || route === "admin") return;
-  const params = readQueryParams();
   const payload = JSON.stringify({
     path: pathForRoute(route),
+    url: getLandingUrl(),
     referrer: document.referrer || "",
     language: navigator.language || "",
     screenWidth: window.screen?.width || 0,
     screenHeight: window.screen?.height || 0,
-    utmSource: params.get("utm_source") || "",
-    utmMedium: params.get("utm_medium") || "",
-    utmCampaign: params.get("utm_campaign") || "",
-    utmContent: params.get("utm_content") || "",
-    utmTerm: params.get("utm_term") || "",
-    fbclid: params.get("fbclid") || "",
-    igshid: params.get("igshid") || "",
-    igsh: params.get("igsh") || firstParamMatching(params, (k) => k.startsWith("igsh")) || "",
   });
   fetch(`${analyticsEndpoint}/api/analytics/pageview`, {
     method: "POST",
@@ -147,8 +141,10 @@ const showPage = (route) => {
 
 const navigate = (route, replace = false) => {
   const nextHash = hashForRoute[route] || "#/";
+  // Keep ?fbclid / UTMs — replaceState("#/") alone strips the query string.
+  const nextUrl = `${location.pathname}${location.search}${nextHash}`;
   if (replace) {
-    history.replaceState(null, "", nextHash);
+    history.replaceState(null, "", nextUrl);
   } else if (location.hash !== nextHash) {
     location.hash = nextHash;
     return;
@@ -267,8 +263,10 @@ if (typedEl && !reduceMotion) {
 }
 
 if (!location.hash || location.hash === "#") {
+  captureLandingUrl();
   navigate("home", true);
 } else {
+  captureLandingUrl();
   syncFromHash();
 }
 
