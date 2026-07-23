@@ -1176,9 +1176,10 @@ strong {
 .admin-table--fit td {
   padding: 0.45rem 0.65rem;
   line-height: 1.35;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  /* Default: keep city/region/etc readable — never letter-wrap */
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 /* Short / key cols stay compact */
@@ -1188,9 +1189,6 @@ strong {
   left: 0;
   z-index: 1;
   background: var(--bg);
-  white-space: nowrap;
-  overflow-wrap: normal;
-  word-break: normal;
   box-shadow: 4px 0 8px -6px color-mix(in srgb, var(--text-strong) 28%, transparent);
 }
 
@@ -1199,47 +1197,26 @@ strong {
   background: var(--bg-soft);
 }
 
-#admin-own-ip th:nth-child(2),
-#admin-own-ip td:nth-child(2),
-#admin-own-ip th:nth-child(3),
-#admin-own-ip td:nth-child(3),
-#admin-own-ip th:nth-child(4),
-#admin-own-ip td:nth-child(4),
-#admin-by-day-ip th:nth-child(2),
-#admin-by-day-ip td:nth-child(2),
-#admin-by-day-ip th:nth-child(3),
-#admin-by-day-ip td:nth-child(3),
-#admin-by-day-ip th:nth-child(4),
-#admin-by-day-ip td:nth-child(4),
-#admin-by-ip th:nth-child(2),
-#admin-by-ip td:nth-child(2),
-#admin-by-ip th:nth-child(3),
-#admin-by-ip td:nth-child(3),
-#admin-by-ip th:nth-child(4),
-#admin-by-ip td:nth-child(4),
-#admin-recent th:nth-child(2),
-#admin-recent td:nth-child(2),
-#admin-recent th:nth-child(3),
-#admin-recent td:nth-child(3),
-#admin-recent th:nth-child(4),
-#admin-recent td:nth-child(4) {
-  white-space: nowrap;
-  overflow-wrap: normal;
-  word-break: normal;
-  width: 1%;
-}
-
+/* Only long free-text cols wrap (ISP / device / UTM / referrer) */
+#admin-own-ip th:nth-child(6),
 #admin-own-ip td:nth-child(6),
+#admin-own-ip th:nth-child(7),
 #admin-own-ip td:nth-child(7),
-#admin-by-ip td:nth-child(5),
+#admin-by-ip th:nth-child(7),
 #admin-by-ip td:nth-child(7),
-#admin-recent td:nth-child(5),
+#admin-recent th:nth-child(7),
 #admin-recent td:nth-child(7),
+#admin-recent th:nth-child(8),
 #admin-recent td:nth-child(8),
+#admin-recent th:nth-child(9),
 #admin-recent td:nth-child(9),
+#admin-recent th:nth-child(10),
 #admin-recent td:nth-child(10) {
-  min-width: 8.5rem;
-  max-width: 16rem;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  min-width: 10rem;
+  max-width: 18rem;
 }
 
 .admin-range {
