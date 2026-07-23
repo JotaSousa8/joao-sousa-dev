@@ -93,17 +93,36 @@ const readQueryParams = () => {
   return params;
 };
 
+/** Facebook/Instagram append click IDs; use them when utm_source is missing. */
+const inferUtmFromClickIds = (params) => {
+  const source = (params.get("utm_source") || "").trim();
+  const medium = (params.get("utm_medium") || "").trim();
+  if (source) {
+    return { utmSource: source, utmMedium: medium };
+  }
+  if (params.has("fbclid")) {
+    return { utmSource: "facebook", utmMedium: medium || "social" };
+  }
+  for (const key of params.keys()) {
+    if (key === "igshid" || key === "igsh" || key.startsWith("igsh")) {
+      return { utmSource: "instagram", utmMedium: medium || "social" };
+    }
+  }
+  return { utmSource: "", utmMedium: medium };
+};
+
 const trackPageView = (route) => {
   if (!analyticsEndpoint || route === "admin") return;
   const params = readQueryParams();
+  const inferred = inferUtmFromClickIds(params);
   const payload = JSON.stringify({
     path: pathForRoute(route),
     referrer: document.referrer || "",
     language: navigator.language || "",
     screenWidth: window.screen?.width || 0,
     screenHeight: window.screen?.height || 0,
-    utmSource: params.get("utm_source") || "",
-    utmMedium: params.get("utm_medium") || "",
+    utmSource: inferred.utmSource,
+    utmMedium: inferred.utmMedium,
     utmCampaign: params.get("utm_campaign") || "",
     utmContent: params.get("utm_content") || "",
     utmTerm: params.get("utm_term") || "",
