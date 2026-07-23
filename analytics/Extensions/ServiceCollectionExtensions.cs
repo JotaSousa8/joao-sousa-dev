@@ -3,6 +3,7 @@ using AnalyticsApi.Infrastructure;
 using AnalyticsApi.Infrastructure.Persistence;
 using AnalyticsApi.Serialization;
 using AnalyticsApi.Services;
+using AnalyticsApi.Services.GeoIp;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 

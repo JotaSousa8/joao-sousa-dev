@@ -1,6 +1,7 @@
 using System.Net;
 using AnalyticsApi.Contracts;
 using AnalyticsApi.Infrastructure.Persistence;
+using AnalyticsApi.Services.GeoIp;
 
 namespace AnalyticsApi.Services;
 

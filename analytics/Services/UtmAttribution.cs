@@ -1,13 +1,7 @@
 using AnalyticsApi.Contracts;
+using AnalyticsApi.Contracts.Responses;
 
 namespace AnalyticsApi.Services;
-
-public sealed record UtmResolution(
-    string? Source,
-    string? Medium,
-    string? Campaign,
-    string? Content,
-    string? Term);
 
 public static class UtmAttribution
 {
