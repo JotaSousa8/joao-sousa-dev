@@ -203,19 +203,48 @@ public sealed class AnalyticsSummaryService(
             .ToList();
 
         var ownIpRows = await ownViews
-            .Select(x => new { x.ClientIp, x.OccurredAtUtc, x.Country, x.City, x.Path })
+            .Select(x => new
+            {
+                x.ClientIp,
+                x.OccurredAtUtc,
+                x.Country,
+                x.City,
+                x.Isp,
+                x.Org,
+                x.UtmSource,
+                x.UtmMedium,
+                x.UtmCampaign,
+                x.UtmContent,
+                x.UtmTerm,
+                x.Path
+            })
             .ToListAsync(cancellationToken);
         var ownByIp = ownIpRows
             .Where(x => x.ClientIp != null)
             .GroupBy(x => x.ClientIp!)
-            .Select(g => new
+            .Select(g =>
             {
-                ip = g.Key,
-                label = ExcludedIpOptions.LabelFor(g.Key),
-                views = g.Count(),
-                lastSeenUtc = g.Max(x => x.OccurredAtUtc),
-                country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
-                city = g.Select(x => x.City).FirstOrDefault(c => c != null),
+                var latestWithUtm = g
+                    .OrderByDescending(x => x.OccurredAtUtc)
+                    .FirstOrDefault(x => x.UtmSource != null || x.UtmMedium != null || x.UtmCampaign != null);
+                var latest = g.OrderByDescending(x => x.OccurredAtUtc).First();
+                var utmRow = latestWithUtm ?? latest;
+                return new
+                {
+                    ip = g.Key,
+                    label = ExcludedIpOptions.LabelFor(g.Key),
+                    views = g.Count(),
+                    lastSeenUtc = g.Max(x => x.OccurredAtUtc),
+                    country = g.Select(x => x.Country).FirstOrDefault(c => c != null),
+                    city = g.Select(x => x.City).FirstOrDefault(c => c != null),
+                    isp = g.Select(x => x.Isp).FirstOrDefault(c => c != null)
+                        ?? g.Select(x => x.Org).FirstOrDefault(c => c != null),
+                    utmSource = utmRow.UtmSource,
+                    utmMedium = utmRow.UtmMedium,
+                    utmCampaign = utmRow.UtmCampaign,
+                    utmContent = utmRow.UtmContent,
+                    utmTerm = utmRow.UtmTerm,
+                };
             })
             .OrderByDescending(x => x.views)
             .ToList();

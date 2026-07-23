@@ -417,6 +417,8 @@ const renderAdminStats = (data) => {
     "views",
     (row) => row.country || "—",
     (row) => row.city || "—",
+    (row) => row.isp || row.org || "—",
+    (row) => formatUtm(row),
     (row) => formatLisbonTime(row.lastSeenUtc),
   ]);
   fillTable("admin-by-day", data.byDay || [], [
