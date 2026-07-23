@@ -252,7 +252,7 @@ app.MapPost("/api/analytics/pageview", async (
         Screen = screen,
         Browser = browser,
         Os = os,
-        UtmSource = Truncate(request.UtmSource, 120),
+        UtmSource = Truncate(NormalizeUtmSource(request.UtmSource), 120),
         UtmMedium = Truncate(request.UtmMedium, 120),
         UtmCampaign = Truncate(request.UtmCampaign, 120),
         UtmContent = Truncate(request.UtmContent, 120),
@@ -379,13 +379,16 @@ app.MapGet("/api/analytics/summary", async (
         .Take(20)
         .ToListAsync();
 
-    var byUtmSource = await visitors
+    var utmSources = await visitors
         .Where(x => x.UtmSource != null)
-        .GroupBy(x => x.UtmSource!)
+        .Select(x => x.UtmSource!)
+        .ToListAsync();
+    var byUtmSource = utmSources
+        .GroupBy(s => NormalizeUtmSource(s) ?? s)
         .Select(g => new { source = g.Key, views = g.Count() })
         .OrderByDescending(x => x.views)
         .Take(20)
-        .ToListAsync();
+        .ToList();
 
     var byIsp = await visitors
         .Where(x => x.Isp != null)
@@ -727,6 +730,23 @@ static string? Truncate(string? value, int max)
 
     value = value.Trim();
     return value.Length <= max ? value : value[..max];
+}
+
+/// <summary>Merge common short aliases into canonical UTM sources (e.g. ig → Instagram).</summary>
+static string? NormalizeUtmSource(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return null;
+    }
+
+    return value.Trim().ToLowerInvariant() switch
+    {
+        "ig" or "insta" => "instagram",
+        "fb" => "facebook",
+        "li" or "in" => "linkedin",
+        var other => other
+    };
 }
 
 static string? FormatScreen(int? width, int? height)
