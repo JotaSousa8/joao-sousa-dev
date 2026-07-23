@@ -1,4 +1,4 @@
-namespace AnalyticsApi.Persistence;
+namespace AnalyticsApi.Infrastructure.Persistence;
 
 public sealed class PageView
 {
