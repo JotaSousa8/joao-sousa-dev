@@ -469,10 +469,10 @@ const renderAdminStats = (data) => {
     (row) => row.country || "—",
     (row) => row.region || "—",
     (row) => row.city || "—",
+    (row) => formatUtm(row),
     (row) => row.referrer || "—",
     (row) => row.isp || row.org || "—",
     (row) => [row.browser, row.os, row.screen].filter(Boolean).join(" · ") || "—",
-    (row) => formatUtm(row),
   ]);
 
   if (adminStats) adminStats.hidden = false;
